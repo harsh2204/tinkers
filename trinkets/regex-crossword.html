@@ -143,7 +143,6 @@
         // Game settings
         const settings = {
             highlightMatching: false,
-            showHints: true,
             showSolution: false,
             difficulty: "easy",
         };
@@ -414,13 +413,6 @@
             settingsPanel.style.zIndex = "1001";
             settingsPanel.style.display = "none";
 
-            const showHintsLabel = document.createElement("label");
-            showHintsLabel.innerHTML = `
-                <input type="checkbox" checked id="show-hints" />
-                Show Hints on Hover
-            `;
-            settingsPanel.appendChild(showHintsLabel);
-
             const showSolutionLabel = document.createElement("label");
             showSolutionLabel.innerHTML = `
                 <input type="checkbox" id="show-solution" />
@@ -453,9 +445,6 @@
                 .getElementById("toggle-settings")
                 .addEventListener("click", toggleSettings);
             document
-                .getElementById("show-hints")
-                .addEventListener("change", updateSettings);
-            document
                 .getElementById("show-solution")
                 .addEventListener("change", updateSettings);
             document
@@ -467,7 +456,6 @@
         }
 
         function updateSettingsFromUI() {
-            settings.showHints = document.getElementById("show-hints").checked;
             settings.showSolution = document.getElementById("show-solution").checked;
         }
 
@@ -547,7 +535,7 @@
             const material = new THREE.MeshBasicMaterial({
                 color: cubeColor,
                 transparent: true,
-                opacity: 0,
+                opacity: 0.5,
             });
 
             const cube = new THREE.Mesh(geometry, material);
@@ -670,8 +658,13 @@
                         }
                     }
                     HOVER = intersectedObject;
-                    if (settings.showHints && HOVER.group) {
-                        showHint(HOVER);
+                    if (!HOVER.locked) {
+                        dimOtherCubes(HOVER); // Add this line
+                        if (HOVER.group) {
+                            showHint(HOVER);
+                        }
+                    } else {
+                        resetCubeDimming()
                     }
                 }
             } else if (HOVER) {
@@ -684,8 +677,36 @@
                     }
                 }
                 HOVER = null;
+                resetCubeDimming()
             }
         }
+        // Add this new function
+        function dimOtherCubes(hoveredCube) {
+            cubes.forEach((cube) => {
+                if (cube !== hoveredCube) {
+                    cube.material.opacity = 0.15; // Dim other cubes
+                    if (cube.line) {
+                        cube.line.material.opacity = 0.5; // Dim the outline
+                    }
+                } else {
+                    cube.material.opacity = 0.6; // Keep the hovered cube fully opaque
+                    if (cube.line) {
+                        cube.line.material.opacity = 1; // Keep the outline fully opaque
+                    }
+                }
+            });
+        }
+
+        // Add this new function
+        function resetCubeDimming() {
+            cubes.forEach((cube) => {
+                cube.material.opacity = 0.5; // Reset to default opacity
+                if (cube.line) {
+                    cube.line.material.opacity = 1; // Reset outline opacity
+                }
+            });
+        }
+
 
         function onKeyDown(event) {
             if (!SELECTION || SELECTION.locked) return; // Add check for locked status
@@ -698,6 +719,7 @@
                     SELECTION.input = char.toUpperCase();
                 }
                 updateDisplay();
+                if (!SELECTION.locked) showHint(SELECTION)
             }
         }
 
@@ -801,6 +823,7 @@
 
             setTimeout(() => {
                 alert("Congratulations! You've solved the puzzle!");
+                window.location.reload()
             }, 1000);
         }
 
