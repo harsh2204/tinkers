@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Enhanced Regex Crossword Puzzle</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #ui-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            z-index: 1000;
+            font-family: Arial, sans-serif;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        #settings-panel {
+            display: none;
+            margin-top: 10px;
+        }
+
+        #toggle-settings {
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #toggle-settings:hover {
+            background-color: #45a049;
+        }
+
+        .setting-item {
+            margin: 10px 0;
+        }
+
+        label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        input[type="checkbox"] {
+            margin-right: 10px;
+        }
+
+        select {
+            width: 100%;
+            padding: 5px;
+            margin-top: 5px;
+            border-radius: 3px;
+            border: 1px solid #ccc;
+        }
+
+        #check-solution {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 10px 20px;
+            font-size: 16px;
+            background-color: #4caf50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #check-solution:hover {
+            background-color: #45a049;
+        }
+
+        #difficulty {
+            display: block;
+            width: 100%;
+            padding: 5px;
+            margin-top: 5px;
+            font-size: 16px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #difficulty:hover {
+            border-color: #888;
+        }
+
+        #difficulty:focus {
+            outline: none;
+            border-color: #4caf50;
+            box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+        }
+
+        select,
+        button {
+            cursor: pointer;
+        }
+    </style>
+    <script async src="https://unpkg.com/es-module-shims@1.3.6/dist/es-module-shims.js"></script>
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://cdn.jsdelivr.net/npm/three@0.167.0/build/three.module.js",
+          "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.167.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+</head>
+
+<body>
+    <script type="module">
+        import * as THREE from "three";
+        import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+        import { FontLoader } from "three/addons/loaders/FontLoader.js";
+        import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
+
+        let scene, camera, renderer, controls, font;
+        const cubes = [];
+        let SELECTION = null;
+        let HOVER = null;
+        const raycaster = new THREE.Raycaster();
+        const mouse = new THREE.Vector2();
+
+        // Game settings
+        const settings = {
+            highlightMatching: false,
+            showHints: true,
+            showSolution: false,
+            difficulty: "easy",
+        };
+
+        // Puzzle data
+        const puzzles = {
+            easy: {
+                words: ["RAT", "DOG", "CAT"],
+                patterns: [
+                    [/[RDC]/, /[AOA]/, /[TGT]/],
+                    [/[RAC]/, /[DA]/, /[TOT]/],
+                ],
+            },
+            medium: {
+                words: ["REGEX", "PARSE", "MATCH"],
+                patterns: [
+                    [/[RPM]/, /[AE]/, /[RG]/, /[SE]/, /[EX]/],
+                    [/[RP]/, /[EA]/, /[GM]/, /[EA]/, /[XT]/],
+                ],
+            },
+            hard: {
+                words: ["PUZZLE", "SOLVER", "GENIUS"],
+                patterns: [
+                    [/[PSG]/, /[UOE]/, /[ZLN]/, /[ZVI]/, /[LVU]/, /[ERS]/],
+                    [/[P-S]/, /[O-U]/, /[L-N]/, /[S-V]/, /[E-I]/, /[R-U]/],
+                ],
+            },
+            expert: {
+                words: ["COMPLEX", "PUZZLER", "CHALLENGE"],
+                patterns: [
+                    [/[CP]/, /[OU]/, /[MZ]/, /[PZ]/, /[LZ]/, /[EL]/, /[XR]/],
+                    [/[C-P]/, /[O-U]/, /[M-Z]/, /[P-Z]/, /[L-Z]/, /[E-R]/, /[X-Z]/],
+                ],
+            },
+            master: {
+                words: ["MASTERY", "EXPERTS", "GENIUSE"],
+                patterns: [
+                    [/[MEG]/, /[AEX]/, /[SPE]/, /[TTR]/, /[ERY]/, /[RSE]/, /[YTS]/],
+                    [/[E-M]/, /[A-X]/, /[P-S]/, /[R-T]/, /[E-R]/, /[R-V]/, /[S-Y]/],
+                ],
+            },
+        };
+
+        function init() {
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(
+                75,
+                window.innerWidth / window.innerHeight,
+                1,
+                1000
+            );
+            camera.position.z = 150;
+
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            document.body.appendChild(renderer.domElement);
+
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.update();
+
+            // Add ambient light
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            window.addEventListener("resize", onWindowResize);
+            document.addEventListener("mousedown", onDocumentMouseDown);
+            document.addEventListener("mousemove", onDocumentMouseMove);
+            document.addEventListener("keydown", onKeyDown);
+
+            loadFont();
+            createLevelSelector3D();
+        }
+
+        // function createLevelSelector3D() 
+        function createLevelSelector3D() {
+            const loader = new FontLoader();
+            loader.load(
+                "https://cdn.jsdelivr.net/npm/three@0.167.0/examples/fonts/helvetiker_bold.typeface.json",
+                (response) => {
+                    font = response;
+
+                    // Create glowy title
+                    const titleGeometry = new TextGeometry("Regex Crossword", {
+                        font: font,
+                        size: 20,
+                        depth: 1,
+                        curveSegments: 12,
+                        bevelEnabled: true,
+                        bevelThickness: 0.5,
+                        bevelSize: 0.3,
+                        bevelOffset: 0,
+                        bevelSegments: 5
+                    });
+                    const titleMaterial = new THREE.MeshPhongMaterial({
+                        color: 0x00ffff,
+                        emissive: 0x00ffff,
+                        emissiveIntensity: 0.5,
+                        shininess: 100
+                    });
+                    const titleMesh = new THREE.Mesh(titleGeometry, titleMaterial);
+                    titleMesh.position.set(-111, 80, 0);
+                    scene.add(titleMesh);
+
+                    // Add point light for glow effect
+                    const pointLight = new THREE.PointLight(0x00ffff, 1, 100);
+                    pointLight.position.set(-80, 80, 20);
+                    scene.add(pointLight);
+
+                    const levels = ["easy", "medium", "hard", "expert", "master"];
+                    levels.forEach((level, index) => {
+                        // Create button background
+                        const buttonGeometry = new THREE.BoxGeometry(60, 20, 5);
+                        const buttonMaterial = new THREE.MeshPhongMaterial({
+                            color: COLORS.BUTTON_BACKGROUND,
+                            emissive: COLORS.BUTTON_BACKGROUND_HOVER,
+                            emissiveIntensity: 0.5,
+                            shininess: 30
+                        });
+                        const buttonMesh = new THREE.Mesh(buttonGeometry, buttonMaterial);
+                        buttonMesh.position.set(0, 20 - index * 25, -2);
+                        buttonMesh.userData = { level: level };
+                        scene.add(buttonMesh);
+
+                        // Create level text
+                        const textGeometry = new TextGeometry(level, {
+                            font: font,
+                            size: 10,
+                            depth: 1,
+                        });
+                        const textMaterial = new THREE.MeshPhongMaterial({
+                            color: 0xffffff,
+                            emissive: 0xffffff,
+                            emissiveIntensity: 0.6,
+                            shininess: 30
+                        });
+                        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+                        textMesh.position.set(-20, 25 - index * 25, 2);
+                        textMesh.userData = { level: level };
+                        scene.add(textMesh);
+                    });
+                }
+            );
+        }
+
+        function onDocumentMouseDown(event) {
+            event.preventDefault();
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(scene.children);
+            if (intersects.length > 0) {
+                const intersectedObject = intersects[0].object;
+                if (intersectedObject.userData.level) {
+                    settings.difficulty = intersectedObject.userData.level;
+                    transitionToGame()
+                } else {
+                    handleGameClick(intersectedObject);
+                }
+            }
+        }
+        function transitionToGame() {
+            const levelObjects = scene.children.filter(obj => obj.userData && obj.userData.level);
+            const duration = 400; // 1 second transition
+            const startTime = Date.now();
+
+            function fadeOut() {
+                const elapsedTime = Date.now() - startTime;
+                const progress = Math.min(elapsedTime / duration, 1);
+
+                levelObjects.forEach(obj => {
+                    obj.material.opacity = 1 - progress;
+                });
+
+                if (progress < 1) {
+                    requestAnimationFrame(fadeOut);
+                } else {
+                    startGame();
+                    fadeInGame();
+                }
+            }
+
+            fadeOut();
+        }
+
+        function fadeInGame() {
+            const duration = 1000; // 1 second transition
+            const startTime = Date.now();
+
+            function fadeIn() {
+                const elapsedTime = Date.now() - startTime;
+                const progress = Math.min(elapsedTime / duration, 1);
+
+                cubes.forEach(cube => {
+                    cube.material.opacity = progress * 0.5; // Keep final opacity at 0.5
+                    if (cube.line) {
+                        cube.line.material.opacity = progress;
+                    }
+                });
+
+                if (progress < 1) {
+                    requestAnimationFrame(fadeIn);
+                }
+            }
+
+            fadeIn();
+        }
+
+        function handleGameClick(intersectedObject) {
+            if (!intersectedObject || !intersectedObject.isMesh) return;
+
+            if (intersectedObject !== SELECTION) {
+                if (SELECTION) {
+                    const currentColor = SELECTION.material.color.getHex()
+                    if (![COLORS.DEFAULT, COLORS.SELECTED].includes(currentColor)) {
+                        SELECTION.currentHex = currentColor
+                    }
+                    SELECTION.material.color.setHex(SELECTION.locked ? COLORS.CORRECT : SELECTION.currentHex ?? COLORS.DEFAULT);
+                    updateCubeLineColor(SELECTION, SELECTION.locked ? COLORS.CORRECT : 0xffffff);
+                }
+                SELECTION = intersectedObject;
+                SELECTION.currentHex = SELECTION.material.color.getHex();
+                SELECTION.material.color.setHex(COLORS.SELECTED);
+                updateCubeLineColor(SELECTION, COLORS.SELECTED);
+            } else if (SELECTION) {
+                SELECTION.material.color.setHex(SELECTION.locked ? COLORS.CORRECT : SELECTION.currentHex);
+                updateCubeLineColor(SELECTION, SELECTION.locked ? COLORS.CORRECT : 0xffffff);
+                SELECTION = null;
+            }
+        }
+
+        function startGame() {
+            scene.clear();
+            loadPuzzle();
+            createSettingsUI();
+            centerCameraOnPuzzle();
+        }
+        function centerCameraOnPuzzle() {
+            const puzzle = puzzles[settings.difficulty];
+            const width = puzzle.words[0].length;
+            const height = puzzle.words.length;
+
+            const centerX = (width - 1) * 5; // 5 is half of the cube size (10)
+            const centerY = -(height - 1) * 5;
+            const centerZ = 0;
+
+            // Set the camera position
+            const distance = Math.max(width, height) * 15; // Adjust this multiplier as needed
+            camera.position.set(centerX, centerY, distance);
+
+            // Set the controls target to the center of the puzzle
+            controls.target.set(centerX, centerY, centerZ);
+            controls.update();
+        }
+
+
+        function createSettingsUI() {
+            const settingsPanel = document.createElement("div");
+            settingsPanel.id = "settings-panel";
+            settingsPanel.style.position = "absolute";
+            settingsPanel.style.top = "10px";
+            settingsPanel.style.right = "10px";
+            settingsPanel.style.backgroundColor = "rgba(255, 255, 255, 0.8)";
+            settingsPanel.style.padding = "10px";
+            settingsPanel.style.borderRadius = "5px";
+            settingsPanel.style.zIndex = "1001";
+            settingsPanel.style.display = "none";
+
+            const showHintsLabel = document.createElement("label");
+            showHintsLabel.innerHTML = `
+                <input type="checkbox" checked id="show-hints" />
+                Show Hints on Hover
+            `;
+            settingsPanel.appendChild(showHintsLabel);
+
+            const showSolutionLabel = document.createElement("label");
+            showSolutionLabel.innerHTML = `
+                <input type="checkbox" id="show-solution" />
+                Show Solution
+            `;
+            settingsPanel.appendChild(showSolutionLabel);
+
+            document.body.appendChild(settingsPanel);
+
+            const toggleSettingsButton = document.createElement("button");
+            toggleSettingsButton.id = "toggle-settings";
+            toggleSettingsButton.innerText = "Toggle Settings";
+            toggleSettingsButton.style.position = "absolute";
+            toggleSettingsButton.style.top = "10px";
+            toggleSettingsButton.style.left = "10px";
+            toggleSettingsButton.style.zIndex = "1001";
+            document.body.appendChild(toggleSettingsButton);
+
+            const checkSolutionButton = document.createElement("button");
+            checkSolutionButton.id = "check-solution";
+            checkSolutionButton.innerText = "Check Solution";
+            checkSolutionButton.style.position = "absolute";
+            checkSolutionButton.style.bottom = "10px";
+            checkSolutionButton.style.left = "50vw";
+            checkSolutionButton.style.zIndex = "1001";
+            document.body.appendChild(checkSolutionButton);
+
+            // UI event listeners
+            document
+                .getElementById("toggle-settings")
+                .addEventListener("click", toggleSettings);
+            document
+                .getElementById("show-hints")
+                .addEventListener("change", updateSettings);
+            document
+                .getElementById("show-solution")
+                .addEventListener("change", updateSettings);
+            document
+                .getElementById("check-solution")
+                .addEventListener("click", checkSolution);
+
+            // Initialize settings from UI
+            updateSettingsFromUI();
+        }
+
+        function updateSettingsFromUI() {
+            settings.showHints = document.getElementById("show-hints").checked;
+            settings.showSolution = document.getElementById("show-solution").checked;
+        }
+
+        function toggleSettings() {
+            const settingsPanel = document.getElementById("settings-panel");
+            settingsPanel.style.display = settingsPanel.style.display === "none" ? "block" : "none";
+        }
+
+        function updateSettings() {
+            updateSettingsFromUI();
+            loadPuzzle();
+        }
+
+        function loadFont() {
+            const loader = new FontLoader();
+            loader.load(
+                "https://cdn.jsdelivr.net/npm/three@0.167.0/examples/fonts/helvetiker_bold.typeface.json",
+                (response) => {
+                    font = response;
+                },
+                (xhr) => {
+                    console.log((xhr.loaded / xhr.total) * 100 + "% loaded");
+                },
+                (err) => {
+                    console.error("An error happened", err);
+                }
+            );
+        }
+
+        // Add these color constants at the top of your script
+        const COLORS = {
+            DEFAULT: 0xAD5C74, //Royal Heath
+            MATCHING: 0x0000ff, // Blue
+            CORRECT: 0x00ff00, // Green
+            SELECTED: 0xffac03, // Orange
+            INCORRECT: 0xc70039, // Crimson
+            BUTTON_BACKGROUND: 0x22fec,
+            BUTTON_BACKGROUND_HOVER: 0xffff,
+
+        };
+
+        // Modify the checkPatterns function
+        function checkPatterns() {
+            cubes.forEach((cube, index) => {
+                const input = cube.input;
+
+                const isMatching = cube.patterns.some((pattern) =>
+                    pattern.test(input)
+                );
+                const isCorrect = input === cube.letter;
+
+                if (isCorrect) {
+                    cube.material.color.setHex(COLORS.CORRECT);
+                    cube.locked = true
+                    updateCubeLineColor(cube)
+                } else if (isMatching) {
+                    cube.material.color.setHex(COLORS.MATCHING);
+                    cube.isMatching = true
+                } else {
+                    cube.material.color.setHex(COLORS.DEFAULT);
+                    cube.isMatching = false
+                }
+            });
+        }
+
+        function makeCube(letter, x, y, z) {
+            const size = 10;
+            const buffer = 2;
+            const position = new THREE.Vector3(x * size, -y * size, z * size);
+
+            const cubeColor = COLORS.DEFAULT;
+            const geometry = new THREE.BoxGeometry(
+                size - buffer,
+                size - buffer,
+                size - buffer
+            );
+            const material = new THREE.MeshBasicMaterial({
+                color: cubeColor,
+                transparent: true,
+                opacity: 0,
+            });
+
+            const cube = new THREE.Mesh(geometry, material);
+            cube.position.copy(position);
+            cube.letter = letter;
+            cube.input = "";
+            cube.selected = false;
+            cube.size = size;
+            cube.locked = false;
+            cube.isMatching = false;
+            cube.getCoordinates = () => [
+                cube.position.x / cube.size,
+                -cube.position.y / cube.size,
+                cube.position.z / cube.size,
+            ];
+
+            scene.add(cube);
+
+            const edges = new THREE.EdgesGeometry(geometry);
+            const line = new THREE.LineSegments(
+                edges,
+                new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2, transparent: true, opacity: 0 })
+            );
+            line.position.copy(position);
+            scene.add(line);
+            cube.line = line;
+
+            cube.patterns = [];
+            cube.group = new THREE.Group();
+            cube.group.position.copy(position);
+            scene.add(cube.group);
+
+            return cube;
+        }
+
+        function updateCubeLineColor(cube, color = undefined) {
+            if (!cube || !cube.line || !cube.line.material) return;
+
+            const lineColor = cube.locked ? COLORS.CORRECT : 0xffffff;
+            cube.line.material.color.setHex(color ?? lineColor);
+        }
+
+        function createText(
+            cube,
+            text,
+            color = 0xffffff,
+            yOffset = 0,
+            thickness = 1,
+            zOffset = 0
+        ) {
+            const textGeometry = new TextGeometry(text, {
+                font: font,
+                size: 4,
+                depth: thickness,
+                curveSegments: 10,
+            });
+
+            const material = new THREE.MeshBasicMaterial({ color: color });
+            const textMesh = new THREE.Mesh(textGeometry, material);
+            textGeometry.computeBoundingBox();
+            const centerOffset =
+                -0.5 *
+                (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
+            const centerOffsetY =
+                -0.5 *
+                (textGeometry.boundingBox.max.y - textGeometry.boundingBox.min.y);
+            textMesh.position.set(
+                centerOffset,
+                yOffset ? yOffset : centerOffsetY,
+                zOffset
+            );
+
+            // Create a billboard object to hold the text
+            const billboard = new THREE.Object3D();
+            billboard.add(textMesh);
+            cube.group.add(billboard);
+
+            // Store the billboard in the cube for easy access later
+            cube.textBillboard = billboard;
+
+            return textMesh;
+        }
+        // Add this function to update billboard orientations
+        function updateBillboards() {
+            cubes.forEach((cube) => {
+                if (cube.textBillboard) {
+                    cube.textBillboard.lookAt(camera.position);
+                }
+            });
+        }
+
+        function onDocumentMouseMove(event) {
+            event.preventDefault();
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(scene.children);
+            if (intersects.length > 0) {
+                const intersectedObject = intersects[0].object;
+                if (intersectedObject.userData.level) {
+                    if (intersectedObject !== HOVER) {
+                        if (HOVER && HOVER.userData.level) {
+                            HOVER.material.emissive.setHex(COLORS.BUTTON_BACKGROUND_HOVER);
+                        }
+                        HOVER = intersectedObject;
+                        HOVER.material.emissive.setHex(COLORS.BUTTON_BACKGROUND);
+                    }
+                } else if (intersectedObject.isMesh && intersectedObject !== HOVER) {
+                    if (HOVER) {
+                        if (HOVER.userData.level) {
+                            HOVER.material.color.setHex(0xffffff);
+                        } else if (HOVER.group) {
+                            HOVER.group.clear();
+                            if (HOVER.input) {
+                                createText(HOVER, HOVER.input);
+                            }
+                        }
+                    }
+                    HOVER = intersectedObject;
+                    if (settings.showHints && HOVER.group) {
+                        showHint(HOVER);
+                    }
+                }
+            } else if (HOVER) {
+                if (HOVER.userData.level) {
+                    HOVER.material.emissive.setHex(COLORS.BUTTON_BACKGROUND);
+                } else if (HOVER.group) {
+                    HOVER.group.clear();
+                    if (HOVER.input) {
+                        createText(HOVER, HOVER.input);
+                    }
+                }
+                HOVER = null;
+            }
+        }
+
+        function onKeyDown(event) {
+            if (!SELECTION || SELECTION.locked) return; // Add check for locked status
+
+            const char = String.fromCharCode(event.which);
+            if (/[a-zA-Z]/.test(char) || event.key === "Backspace") {
+                if (event.key === "Backspace") {
+                    SELECTION.input = "";
+                } else {
+                    SELECTION.input = char.toUpperCase();
+                }
+                updateDisplay();
+            }
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            updateBillboards();
+            renderer.render(scene, camera);
+        }
+
+        function loadPuzzle() {
+            cubes.forEach((cube) => {
+                scene.remove(cube);
+                scene.remove(cube.group);
+            });
+            cubes.length = 0;
+
+            const puzzle = puzzles[settings.difficulty];
+            puzzle.words.forEach((word, y) => {
+                word.split("").forEach((letter, x) => {
+                    const cube = makeCube(letter, x, y, 0);
+                    cube.patterns = [
+                        puzzle.patterns[0][x] || /./, // Use /.*/ as a fallback
+                        puzzle.patterns[1][y] || /./ // Use /.*/ as a fallback
+                    ];
+                    cubes.push(cube);
+                });
+            });
+
+            updateDisplay();
+        }
+
+        function showHint(cube) {
+            const hintText = `${cube.patterns[0]
+                .toString()
+                .slice(1, -1)} / ${cube.patterns[1].toString().slice(1, -1)}`;
+            createText(cube, hintText, 0xffff00, 6);
+        }
+
+        function showSolution() {
+            cubes.forEach((cube) => {
+                createText(cube, cube.letter, 0x00ff00, 0);
+            });
+        }
+
+        function updateDisplay() {
+            cubes.forEach((cube) => {
+                cube.group.clear();
+                if (cube.input) {
+                    createText(cube, cube.input);
+                }
+            });
+
+            if (settings.showSolution) {
+                showSolution();
+            }
+
+            checkPatterns();
+        }
+
+        function checkSolution() {
+            let allCorrect = true;
+            cubes.forEach((cube) => {
+                const isCorrect = cube.input === cube.letter;
+                allCorrect = allCorrect && isCorrect;
+                animateCube(cube, isCorrect, cube.isMatching);
+            });
+
+            if (allCorrect) {
+                celebrateWin();
+            }
+        }
+
+        function celebrateWin() {
+            confetti({
+                particleCount: 100,
+                spread: 70,
+                origin: { y: 1 }
+            });
+
+            setTimeout(() => {
+                confetti({
+                    particleCount: 50,
+                    angle: 60,
+                    spread: 55,
+                    origin: { x: 0 }
+                });
+                confetti({
+                    particleCount: 50,
+                    angle: 120,
+                    spread: 55,
+                    origin: { x: 1 }
+                });
+            }, 250);
+
+            setTimeout(() => {
+                alert("Congratulations! You've solved the puzzle!");
+            }, 1000);
+        }
+
+        function animateCube(cube, isCorrect, isMatching) {
+            const originalColor = cube.material.color.getHex();
+            const animationColor = isCorrect ? COLORS.CORRECT : COLORS.INCORRECT;
+            const animationDuration = 1200; // milliseconds
+            const startTime = Date.now();
+
+            function animate() {
+                const elapsedTime = Date.now() - startTime;
+                const progress = Math.min(elapsedTime / animationDuration, 1);
+
+                if (progress < 1) {
+                    const currentColor = new THREE.Color(originalColor).lerp(
+                        new THREE.Color(animationColor),
+                        progress
+                    );
+                    cube.material.color.set(currentColor);
+                    const lineColor = isCorrect ? COLORS.CORRECT : isMatching ? COLORS.MATCHING : COLORS.INCORRECT
+                    updateCubeLineColor(cube, lineColor)
+                    requestAnimationFrame(animate);
+                } else {
+                    if (isCorrect) {
+                        cube.locked = true; // Lock the cube when correct
+                        cube.material.color.setHex(COLORS.CORRECT);
+                    } else {
+                        cube.material.color.setHex(originalColor);
+                    }
+                    updateCubeLineColor(cube)
+                }
+            }
+
+            animate();
+        }
+
+        init();
+        animate();
+    </script>
+</body>
+
+</html>
