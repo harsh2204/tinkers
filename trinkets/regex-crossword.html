@@ -132,6 +132,7 @@
         import { OrbitControls } from "three/addons/controls/OrbitControls.js";
         import { FontLoader } from "three/addons/loaders/FontLoader.js";
         import { TextGeometry } from "three/addons/geometries/TextGeometry.js";
+        import { SimplexNoise } from "three/addons/math/SimplexNoise.js";
 
         let scene, camera, renderer, controls, font;
         const cubes = [];
@@ -212,23 +213,138 @@
             document.addEventListener("mousemove", onDocumentMouseMove);
             document.addEventListener("keydown", onKeyDown);
 
-            loadFont();
-            createLevelSelector3D();
+            createTitleScreen();
         }
 
-        // function createLevelSelector3D() 
-        function createLevelSelector3D() {
+        function createTitleScreen() {
+            scene.clear();
+
+            // Create background pattern
+            createBackgroundPattern();
+
+            // Create glowy title
+            createGlowyTitle("Regex Crossword", 0, 60, 0);
+
+            const menuOptions = [
+                { text: "Play", y: 20, onClick: () => transitionToLevelSelector() },
+                { text: "Create", y: -10, onClick: () => console.log("Create option clicked"), disabled: true },
+                { text: "Browse", y: -40, onClick: () => console.log("Browse option clicked"), disabled: true }
+            ];
+
+            menuOptions.forEach((option, index) => {
+                createMenuOption(option.text, 0, option.y, 0, option.onClick, index * 200, option.disabled);
+            });
+            animateCameraToPosition(0, 0, 200);
+
+        }
+        function createBackgroundPattern() {
+            const geometry = new THREE.BufferGeometry();
+            const vertices = [];
+            const colors = [];
+            const size = 400;
+            const density = 2000; // Increased density for more particles
+
+            // Create a 3D simplex noise function
+            const noise = new SimplexNoise();
+
+            const spreadX = 3.5;
+            const spreadY = 2.5;
+            const spreadZ = 2.5;
+            const noiseScale = 10; // Controls the "roughness" of the distribution
+            const initialNoiseScale = 0.5;
+            const dispersionFactor = -0.2; // Controls how much the particles deviate from the central line
+
+            for (let i = 0; i < density; i++) {
+                const t = i / density;
+
+                // Base position along a line
+                let x = size * spreadX * (t - 0.5);
+                let y = size * spreadY * (t - 0.5);
+                let z = size * spreadZ * (t - 0.5);
+
+                // Add noise-based dispersion
+                x += size * dispersionFactor * (noise.noise3d(t * noiseScale, 0, 0) - 0.5);
+                y += size * dispersionFactor * (noise.noise3d(0, t * noiseScale, 0) - 0.5);
+                z += size * dispersionFactor * (noise.noise3d(0, 0, t * noiseScale) - 0.5);
+
+                vertices.push(x, y, z);
+
+                // Create a more vibrant color palette
+                const hue = (noise.noise4d(t, t * 0.5, 0, 0) * 0.5 + 0.5) * 0.7 + 0.3;
+                const saturation = 0.8;
+                const lightness = 0.6;
+                const color = new THREE.Color().setHSL(hue, saturation, lightness);
+                colors.push(color.r, color.g, color.b);
+            }
+
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+            geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                vertexColors: true,
+                size: 1,
+                transparent: true,
+                opacity: 0,
+                blending: THREE.AdditiveBlending,
+            });
+
+            const points = new THREE.Points(geometry, material);
+            scene.add(points);
+
+            // Animate background points
+            const duration = 2000; // Longer duration for a slower, more mesmerizing effect
+            const startTime = Date.now();
+
+            function animateBackground() {
+                const elapsedTime = Date.now() - startTime;
+                const progress = Math.min(elapsedTime / duration, 1);
+
+                points.material.opacity = progress * 0.8;
+
+                const positions = points.geometry.attributes.position.array;
+                const colors = points.geometry.attributes.color.array;
+                const count = positions.length / 3;
+
+                // Evolve noiseScale over time
+                const noiseScale = initialNoiseScale + Math.sin(elapsedTime * 0.001) * 0.3;
+
+                for (let i = 0; i < count; i++) {
+                    const i3 = i * 3;
+                    const time = elapsedTime * 0.0001;
+                    const offset = i * 0.01;
+
+                    // Use evolving noiseScale for position updates
+                    positions[i3] += noise.noise4d(positions[i3] * noiseScale, positions[i3 + 1] * noiseScale, positions[i3 + 2] * noiseScale, time) * 0.2;
+                    positions[i3 + 1] += noise.noise4d(positions[i3 + 1] * noiseScale, positions[i3 + 2] * noiseScale, positions[i3] * noiseScale, time) * 0.2;
+                    positions[i3 + 2] += noise.noise4d(positions[i3 + 2] * noiseScale, positions[i3] * noiseScale, positions[i3 + 1] * noiseScale, time) * 0.2;
+
+                    // Slowly shift colors over time
+                    const hue = (noise.noise4d(offset, time, 0, 0) * 0.5 + 0.5) * 0.7 + 0.3;
+                    const color = new THREE.Color().setHSL(hue, 0.8, 0.6);
+                    colors[i3] = color.r;
+                    colors[i3 + 1] = color.g;
+                    colors[i3 + 2] = color.b;
+                }
+
+                points.geometry.attributes.position.needsUpdate = true;
+                points.geometry.attributes.color.needsUpdate = true;
+
+                requestAnimationFrame(animateBackground);
+            }
+
+            animateBackground();
+        }
+
+        function createGlowyTitle(text, x, y, z) {
             const loader = new FontLoader();
             loader.load(
                 "https://cdn.jsdelivr.net/npm/three@0.167.0/examples/fonts/helvetiker_bold.typeface.json",
-                (response) => {
-                    font = response;
-
-                    // Create glowy title
-                    const titleGeometry = new TextGeometry("Regex Crossword", {
+                (loadedFont) => {
+                    font = loadedFont;
+                    const geometry = new TextGeometry(text, {
                         font: font,
                         size: 20,
-                        depth: 1,
+                        height: 2,
                         curveSegments: 12,
                         bevelEnabled: true,
                         bevelThickness: 0.5,
@@ -236,56 +352,202 @@
                         bevelOffset: 0,
                         bevelSegments: 5
                     });
-                    const titleMaterial = new THREE.MeshPhongMaterial({
+
+                    const material = new THREE.MeshPhongMaterial({
                         color: 0x00ffff,
                         emissive: 0x00ffff,
-                        emissiveIntensity: 0.5,
-                        shininess: 100
+                        emissiveIntensity: 0,
+                        shininess: 100,
+                        transparent: true,
+                        opacity: 0
                     });
-                    const titleMesh = new THREE.Mesh(titleGeometry, titleMaterial);
-                    titleMesh.position.set(-111, 80, 0);
-                    scene.add(titleMesh);
+
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(x, y, z);
+                    scene.add(mesh);
+
+                    // Center the title
+                    geometry.computeBoundingBox();
+                    mesh.position.x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
 
                     // Add point light for glow effect
-                    const pointLight = new THREE.PointLight(0x00ffff, 1, 100);
-                    pointLight.position.set(-80, 80, 20);
+                    const pointLight = new THREE.PointLight(0x00ffff, 0, 100);
+                    pointLight.position.set(x, y, z + 20);
                     scene.add(pointLight);
 
-                    const levels = ["easy", "medium", "hard", "expert", "master"];
-                    levels.forEach((level, index) => {
-                        // Create button background
-                        const buttonGeometry = new THREE.BoxGeometry(60, 20, 5);
-                        const buttonMaterial = new THREE.MeshPhongMaterial({
-                            color: COLORS.BUTTON_BACKGROUND,
-                            emissive: COLORS.BUTTON_BACKGROUND_HOVER,
-                            emissiveIntensity: 0.5,
-                            shininess: 30
-                        });
-                        const buttonMesh = new THREE.Mesh(buttonGeometry, buttonMaterial);
-                        buttonMesh.position.set(0, 20 - index * 25, -2);
-                        buttonMesh.userData = { level: level };
-                        scene.add(buttonMesh);
+                    // Animate title appearance
+                    const duration = 1500;
+                    const startTime = Date.now();
 
-                        // Create level text
-                        const textGeometry = new TextGeometry(level, {
-                            font: font,
-                            size: 10,
-                            depth: 1,
-                        });
-                        const textMaterial = new THREE.MeshPhongMaterial({
-                            color: 0xffffff,
-                            emissive: 0xffffff,
-                            emissiveIntensity: 0.6,
-                            shininess: 30
-                        });
-                        const textMesh = new THREE.Mesh(textGeometry, textMaterial);
-                        textMesh.position.set(-20, 25 - index * 25, 2);
-                        textMesh.userData = { level: level };
-                        scene.add(textMesh);
-                    });
+                    function animateTitle() {
+                        const elapsedTime = Date.now() - startTime;
+                        const progress = Math.min(elapsedTime / duration, 1);
+
+                        mesh.material.emissiveIntensity = progress * 0.5;
+                        mesh.material.opacity = progress;
+                        pointLight.intensity = progress;
+
+                        if (progress < 1) {
+                            requestAnimationFrame(animateTitle);
+                        }
+                    }
+
+                    animateTitle();
                 }
             );
         }
+
+        function createMenuOption(text, x, y, z, onClick, delay = 0, disabled = false) {
+            const loader = new FontLoader();
+            loader.load(
+                "https://cdn.jsdelivr.net/npm/three@0.167.0/examples/fonts/helvetiker_bold.typeface.json",
+                (loadedFont) => {
+                    font = loadedFont;
+                    const geometry = new TextGeometry(text, {
+                        font: font,
+                        size: 10,
+                        height: 1,
+                        curveSegments: 12,
+                    });
+
+                    const material = new THREE.MeshPhongMaterial({
+                        color: disabled ? 0x888888 : 0xffffff,
+                        emissive: disabled ? 0x444444 : 0xffffff,
+                        emissiveIntensity: 0,
+                        transparent: true,
+                        opacity: 0
+                    });
+
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(x, y, z);
+                    scene.add(mesh);
+
+                    // Center the text
+                    geometry.computeBoundingBox();
+                    mesh.position.x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+
+                    // Make the option clickable
+                    mesh.userData = { onClick: onClick };
+
+                    // Animate menu option appearance
+                    const duration = 1000;
+                    const startTime = Date.now() + delay;
+
+                    function animateMenuOption() {
+                        const elapsedTime = Date.now() - startTime;
+                        if (elapsedTime < 0) {
+                            requestAnimationFrame(animateMenuOption);
+                            return;
+                        }
+
+                        const progress = Math.min(elapsedTime / duration, 1);
+
+                        mesh.material.emissiveIntensity = progress * 0.2;
+                        mesh.material.opacity = progress;
+                        mesh.position.z = (1 - progress) * 20;
+
+                        if (progress < 1) {
+                            requestAnimationFrame(animateMenuOption);
+                        }
+                    }
+
+                    animateMenuOption();
+                }
+            );
+        }
+        function transitionToLevelSelector() {
+            const duration = 1000;
+            const startTime = Date.now();
+
+            function fadeOut() {
+                const elapsedTime = Date.now() - startTime;
+                const progress = Math.min(elapsedTime / duration, 1);
+
+                scene.children.forEach(child => {
+                    if (child.material) {
+                        child.material.opacity = 1 - progress;
+                    }
+                });
+
+                if (progress < 1) {
+                    requestAnimationFrame(fadeOut);
+                } else {
+                    createLevelSelector3D();
+                }
+            }
+
+            fadeOut();
+        }
+
+        function createLevelSelector3D() {
+            scene.clear();
+
+            createBackgroundPattern();
+            createGlowyTitle("Select Level", 0, 80, 0);
+
+            const levels = ["easy", "medium", "hard", "expert", "master"];
+            levels.forEach((level, index) => {
+                createLevelOption(level, 0, 20 - index * 25, 0, index * 200);
+            });
+
+            animateCameraToPosition(0, 0, 200);
+        }
+
+
+        function onDocumentMouseMove(event) {
+            event.preventDefault();
+
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+
+            const intersects = raycaster.intersectObjects(scene.children);
+            if (intersects.length > 0) {
+                const intersectedObject = intersects[0].object;
+                if (intersectedObject.userData.level) {
+                    if (intersectedObject !== HOVER) {
+                        if (HOVER && HOVER.userData.level) {
+                            HOVER.material.emissive.setHex(COLORS.BUTTON_BACKGROUND_HOVER);
+                        }
+                        HOVER = intersectedObject;
+                        HOVER.material.emissive.setHex(COLORS.BUTTON_BACKGROUND);
+                    }
+                } else if (intersectedObject.isMesh && intersectedObject !== HOVER) {
+                    if (HOVER) {
+                        if (HOVER.userData.level) {
+                            HOVER.material.emissive.setHex(0x000000);
+                        } else if (HOVER.group) {
+                            HOVER.group.clear();
+                            if (HOVER.input) {
+                                createText(HOVER, HOVER.input);
+                            }
+                        }
+                    }
+                    HOVER = intersectedObject;
+                    if (!HOVER.locked) {
+                        dimOtherCubes(HOVER);
+                        if (HOVER.group) {
+                            showHint(HOVER);
+                        }
+                    } else {
+                        resetCubeDimming();
+                    }
+                }
+            } else if (HOVER) {
+                if (HOVER.userData.level) {
+                    HOVER.material.emissive.setHex(COLORS.BUTTON_BACKGROUND_HOVER);
+                } else if (HOVER.group) {
+                    HOVER.group.clear();
+                    if (HOVER.input) {
+                        createText(HOVER, HOVER.input);
+                    }
+                }
+                HOVER = null;
+                resetCubeDimming();
+            }
+        }
+
 
         function onDocumentMouseDown(event) {
             event.preventDefault();
@@ -298,38 +560,120 @@
             const intersects = raycaster.intersectObjects(scene.children);
             if (intersects.length > 0) {
                 const intersectedObject = intersects[0].object;
-                if (intersectedObject.userData.level) {
+                if (intersectedObject.userData.onClick) {
+                    intersectedObject.userData.onClick();
+                } else if (intersectedObject.userData.level) {
                     settings.difficulty = intersectedObject.userData.level;
-                    transitionToGame()
+                    transitionToGame();
                 } else {
                     handleGameClick(intersectedObject);
                 }
             }
         }
+
+        function createLevelOption(level, x, y, z, delay = 0) {
+            const loader = new FontLoader();
+            loader.load(
+                "https://cdn.jsdelivr.net/npm/three@0.167.0/examples/fonts/helvetiker_bold.typeface.json",
+                (loadedFont) => {
+                    font = loadedFont;
+                    const geometry = new TextGeometry(level, {
+                        font: font,
+                        size: 10,
+                        height: 1,
+                        curveSegments: 12,
+                    });
+
+                    const material = new THREE.MeshPhongMaterial({
+                        color: 0xffffff,
+                        emissive: 0xffffff,
+                        emissiveIntensity: 0,
+                        transparent: true,
+                        opacity: 0
+                    });
+
+                    const mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(x, y, z);
+                    scene.add(mesh);
+
+                    // Center the text
+                    geometry.computeBoundingBox();
+                    mesh.position.x = -0.5 * (geometry.boundingBox.max.x - geometry.boundingBox.min.x);
+
+                    // Make the option clickable
+                    mesh.userData = { level: level };
+
+                    // Animate level option appearance
+                    const duration = 1000;
+                    const startTime = Date.now() + delay;
+
+                    function animateLevelOption() {
+                        const elapsedTime = Date.now() - startTime;
+                        if (elapsedTime < 0) {
+                            requestAnimationFrame(animateLevelOption);
+                            return;
+                        }
+
+                        const progress = Math.min(elapsedTime / duration, 1);
+
+                        mesh.material.emissiveIntensity = progress * 0.2;
+                        mesh.material.opacity = progress;
+                        mesh.position.z = (1 - progress) * 20;
+
+                        if (progress < 1) {
+                            requestAnimationFrame(animateLevelOption);
+                        }
+                    }
+
+                    animateLevelOption();
+                }
+            );
+        }
+
+        function animateCameraToPosition(x, y, z, duration = 1000) {
+            const startPosition = camera.position.clone();
+            const endPosition = new THREE.Vector3(x, y, z);
+            const startTime = Date.now();
+
+            function updateCamera() {
+                const elapsedTime = Date.now() - startTime;
+                const progress = Math.min(elapsedTime / duration, 1);
+
+                camera.position.lerpVectors(startPosition, endPosition, progress);
+                controls.target.set(0, 0, 0);
+                controls.update();
+
+                if (progress < 1) {
+                    requestAnimationFrame(updateCamera);
+                }
+            }
+
+            updateCamera();
+        }
+
         function transitionToGame() {
-            const levelObjects = scene.children.filter(obj => obj.userData && obj.userData.level);
-            const duration = 400; // 1 second transition
+            const duration = 1000;
             const startTime = Date.now();
 
             function fadeOut() {
                 const elapsedTime = Date.now() - startTime;
                 const progress = Math.min(elapsedTime / duration, 1);
 
-                levelObjects.forEach(obj => {
-                    obj.material.opacity = 1 - progress;
+                scene.children.forEach(child => {
+                    if (child.material) {
+                        child.material.opacity = 1 - progress;
+                    }
                 });
 
                 if (progress < 1) {
                     requestAnimationFrame(fadeOut);
                 } else {
                     startGame();
-                    fadeInGame();
                 }
             }
 
             fadeOut();
         }
-
         function fadeInGame() {
             const duration = 1000; // 1 second transition
             const startTime = Date.now();
@@ -381,6 +725,7 @@
             loadPuzzle();
             createSettingsUI();
             centerCameraOnPuzzle();
+            fadeInGame();
         }
         function centerCameraOnPuzzle() {
             const puzzle = puzzles[settings.difficulty];
@@ -627,59 +972,6 @@
             });
         }
 
-        function onDocumentMouseMove(event) {
-            event.preventDefault();
-
-            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-            mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-            raycaster.setFromCamera(mouse, camera);
-
-            const intersects = raycaster.intersectObjects(scene.children);
-            if (intersects.length > 0) {
-                const intersectedObject = intersects[0].object;
-                if (intersectedObject.userData.level) {
-                    if (intersectedObject !== HOVER) {
-                        if (HOVER && HOVER.userData.level) {
-                            HOVER.material.emissive.setHex(COLORS.BUTTON_BACKGROUND_HOVER);
-                        }
-                        HOVER = intersectedObject;
-                        HOVER.material.emissive.setHex(COLORS.BUTTON_BACKGROUND);
-                    }
-                } else if (intersectedObject.isMesh && intersectedObject !== HOVER) {
-                    if (HOVER) {
-                        if (HOVER.userData.level) {
-                            HOVER.material.color.setHex(0xffffff);
-                        } else if (HOVER.group) {
-                            HOVER.group.clear();
-                            if (HOVER.input) {
-                                createText(HOVER, HOVER.input);
-                            }
-                        }
-                    }
-                    HOVER = intersectedObject;
-                    if (!HOVER.locked) {
-                        dimOtherCubes(HOVER); // Add this line
-                        if (HOVER.group) {
-                            showHint(HOVER);
-                        }
-                    } else {
-                        resetCubeDimming()
-                    }
-                }
-            } else if (HOVER) {
-                if (HOVER.userData.level) {
-                    HOVER.material.emissive.setHex(COLORS.BUTTON_BACKGROUND);
-                } else if (HOVER.group) {
-                    HOVER.group.clear();
-                    if (HOVER.input) {
-                        createText(HOVER, HOVER.input);
-                    }
-                }
-                HOVER = null;
-                resetCubeDimming()
-            }
-        }
         // Add this new function
         function dimOtherCubes(hoveredCube) {
             cubes.forEach((cube) => {
