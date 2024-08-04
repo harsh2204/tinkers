@@ -82,16 +82,11 @@
     }
 
     .theme-toggle {
-      position: fixed;
       top: 20px;
       right: 20px;
-      background-color: #2c3e50;
-      color: #fff;
+      background-color: var(--text-color);
+      color: var(--bg-color);
       border: none;
-      padding: 10px 15px;
-      border-radius: 5px;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
     }
 
     .theme-toggle:hover {
@@ -241,15 +236,24 @@
     });
 
     // Theme toggle functionality
-    const themeToggle = document.querySelector(".theme-toggle");
-    const body = document.body;
+    const themeToggle = document.querySelector('.theme-toggle');
+    const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
 
-    themeToggle.addEventListener("click", () => {
-      body.classList.toggle("dark-theme");
-      themeToggle.textContent = body.classList.contains("dark-theme")
-        ? "Light Theme"
-        : "Dark Theme";
-    });
+    function setTheme(isDark) {
+      document.body.classList.toggle('dark-theme', isDark);
+      themeToggle.textContent = isDark ? 'Light Theme' : 'Dark Theme';
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    }
+
+    // Set initial theme
+    const storedTheme = localStorage.getItem('theme');
+    setTheme(storedTheme === 'dark' || (storedTheme === null && prefersDarkScheme.matches));
+
+    // Theme toggle event listener
+    themeToggle.addEventListener('click', () => setTheme(!document.body.classList.contains('dark-theme')));
+
+    // Listen for system theme changes
+    prefersDarkScheme.addEventListener('change', (e) => setTheme(e.matches));
 
     // Hover effect for project list items
     const projectItems = document.querySelectorAll(".project-list a");
