@@ -255,6 +255,7 @@
                 <select id="background">
                     <option value="starry">Starry Night</option>
                     <option value="sunset">Sunset Gradient</option>
+                    <option value="none">None</option>
                 </select>
             </label>
         </div>
@@ -372,20 +373,22 @@
                     r: Math.random() * 1.5
                 }));
                 return `
-                    <rect width="300" height="300" fill="#000033" />
-                    ${stars.map(star => `<circle cx="${star.x}" cy="${star.y}" r="${star.r}" fill="white" opacity="${Math.random() * 0.5 + 0.5}" />`).join('')}
+    <rect width="300" height="300" fill="#000033" />
+    ${stars.map(star => `<circle cx="${star.x}" cy="${star.y}" r="${star.r}" fill="white" opacity="${Math.random() * 0.5 + 0.5}" />`).join('')}
                 `;
             } else if (type === 'sunset') {
                 return `
-                    <defs>
-                        <linearGradient id="sunsetGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                            <stop offset="0%" style="stop-color:#FF6B6B;stop-opacity:1" />
-                            <stop offset="50%" style="stop-color:#FFD93D;stop-opacity:1" />
-                            <stop offset="100%" style="stop-color:#4D96FF;stop-opacity:1" />
-                        </linearGradient>
-                    </defs>
-                    <rect width="300" height="300" fill="url(#sunsetGradient)" />
+    <defs>
+        <linearGradient id="sunsetGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#FF6B6B;stop-opacity:1" />
+            <stop offset="50%" style="stop-color:#FFD93D;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#4D96FF;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    <rect width="300" height="300" fill="url(#sunsetGradient)" />
                 `;
+            } else {
+                return '';
             }
         };
         const viewToggle = document.getElementById('viewToggle');
@@ -425,65 +428,61 @@
             const godRays = generateGodRays(numGodRays, flareX, flareY, mainFlareSize);
 
             const preview = document.getElementById('preview');
-            const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
-            <defs>
-                <radialGradient id="flareGradient">
-                    <stop offset="0%" stop-color="${flareColor}" stop-opacity="${flareOpacity}"/>
-                    <stop offset="100%" stop-color="${flareColor}" stop-opacity="0"/>
-                </radialGradient>
-                <filter id="glow">
-                    <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-                    <feMerge>
-                        <feMergeNode in="coloredBlur"/>
-                        <feMergeNode in="SourceGraphic"/>
-                    </feMerge>
-                </filter>
-            </defs>
-            
-            <!-- Background -->
-            ${generateBackground(background)}
 
-            ${showGodRays ? `
-                <!-- God-rays -->
-                ${godRays.map(ray => `
-                    <line x1="${ray.x1}" y1="${ray.y1}" x2="${ray.x2}" y2="${ray.y2}" 
-                            stroke="${godRayColor}" stroke-width="${mainFlareSize / 10}" opacity="${godRayOpacity}" filter="url(#glow)"/>
-                `).join('')}
-            ` : ''}
-
-            ${showMainFlare ? `
-                <!-- Main flare -->
-                <circle cx="${flareX}" cy="${flareY}" r="${mainFlareSize / 2}" fill="url(#flareGradient)" filter="url(#glow)"/>
-                
-                <!-- Central bright spot -->
-                <circle cx="${flareX}" cy="${flareY}" r="${mainFlareSize / 8}" fill="${flareColor}" opacity="${flareOpacity}" filter="url(#glow)"/>
-                
-                <!-- Horizontal line -->
-                <line x1="${flareX - mainFlareSize}" y1="${flareY}" x2="${flareX + mainFlareSize}" y2="${flareY}" 
-                        stroke="${flareColor}" stroke-width="2" opacity="${flareOpacity / 2}" filter="url(#glow)"/>
-                
-                <!-- Vertical line -->
-                <line x1="${flareX}" y1="${flareY - mainFlareSize}" x2="${flareX}" y2="${flareY + mainFlareSize}" 
-                        stroke="${flareColor}" stroke-width="2" opacity="${flareOpacity / 2}" filter="url(#glow)"/>
-            ` : ''}
-            
-            ${showArtifacts ? `
-                <!-- Random smaller flares with color variation -->
-                ${randomFlares.map(flare => `
-                    <circle cx="${flare.x}" cy="${flare.y}" r="${flare.size / 2}" 
-                            fill="${flare.color}" opacity="${flare.opacity}" filter="url(#glow)"/>
-                `).join('')}
-            ` : ''}
-            
-            ${showAnamorphicStreak ? `
-                <!-- Anamorphic streak -->
-                <ellipse cx="${flareX}" cy="${flareY}" rx="${mainFlareSize * 1.5}" ry="${mainFlareSize * 0.1}" 
-                            fill="${flareColor}" opacity="${flareOpacity / 3}" transform="rotate(${Math.random() * 180}, ${flareX}, ${flareY})" filter="url(#glow)"/>
-            ` : ''}
-        </svg>
+            const genBackground = generateBackground(background)
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 300">
+<!-- Generate by https://trinkets.harshgupta.dev/trinkets/flare-simulator -->
+    ${showMainFlare ? `<defs>
+        <radialGradient id="flareGradient">
+            <stop offset="0%" stop-color="${flareColor}" stop-opacity="${flareOpacity}"/>
+            <stop offset="100%" stop-color="${flareColor}" stop-opacity="0"/>
+        </radialGradient>
+        <filter id="glow">
+            <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+            <feMerge>
+                <feMergeNode in="coloredBlur"/>
+                <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+        </filter>
+    </defs>
+        ` : ''}
+    ${genBackground ? '<!-- Background -->' : ''}
+    ${genBackground}
+    ${showGodRays ? `
+    <!-- God-rays -->
+    ${godRays.map(ray => `
+    <line x1="${ray.x1}" y1="${ray.y1}" x2="${ray.x2}" y2="${ray.y2}" 
+            stroke="${godRayColor}" stroke-width="${mainFlareSize / 10}" opacity="${godRayOpacity}" filter="url(#glow)"/>
+    `).join('')}
+    ` : ''}
+    ${showMainFlare ? `<!-- Main flare -->
+    <circle cx="${flareX}" cy="${flareY}" r="${mainFlareSize / 2}" fill="url(#flareGradient)" filter="url(#glow)"/>
+    
+    <!-- Central bright spot -->
+    <circle cx="${flareX}" cy="${flareY}" r="${mainFlareSize / 8}" fill="${flareColor}" opacity="${flareOpacity}" filter="url(#glow)"/>
+    
+    <!-- Horizontal line -->
+    <line x1="${flareX - mainFlareSize}" y1="${flareY}" x2="${flareX + mainFlareSize}" y2="${flareY}" 
+            stroke="${flareColor}" stroke-width="2" opacity="${flareOpacity / 2}" filter="url(#glow)"/>
+    
+    <!-- Vertical line -->
+    <line x1="${flareX}" y1="${flareY - mainFlareSize}" x2="${flareX}" y2="${flareY + mainFlareSize}" 
+            stroke="${flareColor}" stroke-width="2" opacity="${flareOpacity / 2}" filter="url(#glow)"/>
+    ` : ''}
+    ${showArtifacts ? `
+    <!-- Random smaller flares with color variation -->
+    ${randomFlares.map(flare => `
+    <circle cx="${flare.x}" cy="${flare.y}" r="${flare.size / 2}" 
+            fill="${flare.color}" opacity="${flare.opacity}" filter="url(#glow)"/>
+    `).join('')}
+    ` : ''}
+    ${showAnamorphicStreak ? `
+    <!-- Anamorphic streak -->
+    <ellipse cx="${flareX}" cy="${flareY}" rx="${mainFlareSize * 1.5}" ry="${mainFlareSize * 0.1}" 
+                fill="${flareColor}" opacity="${flareOpacity / 3}" transform="rotate(${Math.random() * 180}, ${flareX}, ${flareY})" filter="url(#glow)"/>
+    ` : ''}
+</svg>
     `;
-
             preview.innerHTML = svg;
             document.getElementById('svgCode').textContent = svg;
 
