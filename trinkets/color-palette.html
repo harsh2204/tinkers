@@ -7,15 +7,61 @@
     <title>Color Palette Generator</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+    <script type="text/javascript" src="https://chir.ag/projects/ntc/ntc.js"></script>
     <style>
+        @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap");
+
+        :root {
+            --bg-color: #e6eaee;
+            --text-color: #333;
+            --container-bg: #fff;
+            --quirky-color: #3498db;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --accent-color: #e74c3c;
+        }
+
+        .dark-theme {
+            --bg-color: #1a2a3a;
+            --text-color: #f0f4f8;
+            --container-bg: #2c3e50;
+            --quirky-color: #e74c3c;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --accent-color: #3498db;
+        }
+
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            transition: background-color 0.3s ease, color 0.3s ease;
             display: flex;
-            justify-content: center;
-            align-items: center;
+            flex-direction: column;
             min-height: 100vh;
             margin: 0;
-            background-color: #f0f0f0;
+        }
+
+        .container {
+            margin: 50px auto;
+            padding: 40px;
+            background-color: var(--container-bg);
+            box-shadow: 0 10px 30px var(--shadow-color);
+            border-radius: 15px;
+            flex-grow: 1;
+        }
+
+        h1,
+        h2,
+        h3,
+        h4 {
+            color: var(--text-color);
+        }
+
+        h1 {
+            font-size: clamp(2rem, 5vw, 2.5rem);
+            text-align: center;
+            margin-bottom: 20px;
         }
 
         #app {
@@ -38,7 +84,7 @@
 
         button,
         select {
-            background-color: #4CAF50;
+            background-color: var(--quirky-color);
             border: none;
             color: white;
             padding: 10px 20px;
@@ -54,7 +100,7 @@
 
         button:hover,
         select:hover {
-            background-color: #45a049;
+            background-color: var(--accent-color);
             transform: scale(1.05);
         }
 
@@ -75,19 +121,21 @@
         summary {
             cursor: pointer;
             padding: 10px;
-            background-color: #e0e0e0;
+            background-color: var(--bg-color);
             border-radius: 5px;
             margin-bottom: 10px;
         }
 
         summary:hover {
-            background-color: #d0d0d0;
+            background-color: var(--quirky-color);
+            color: white;
         }
 
         .example-content {
             padding: 15px;
             border-radius: 5px;
             margin-bottom: 20px;
+            background-color: var(--container-bg);
         }
 
         .color-swatch {
@@ -95,7 +143,7 @@
             width: 20px;
             height: 20px;
             margin-right: 5px;
-            border: 1px solid #000;
+            border: 1px solid var(--text-color);
         }
 
         .clickable-color {
@@ -128,8 +176,8 @@
         }
 
         pre {
-            background-color: #f4f4f4;
-            border: 1px solid #ddd;
+            background-color: var(--bg-color);
+            border: 1px solid var(--text-color);
             border-radius: 4px;
             padding: 10px;
             white-space: pre-wrap;
@@ -137,7 +185,7 @@
         }
 
         .copy-button {
-            background-color: #4CAF50;
+            background-color: var(--quirky-color);
             color: white;
             border: none;
             padding: 5px 10px;
@@ -157,6 +205,7 @@
             border-radius: 5px;
             display: inline-block;
             transition: all 0.5s ease;
+            padding-top: 2rem;
         }
 
         .tooltip {
@@ -183,73 +232,89 @@
             position: absolute;
             pointer-events: none;
         }
+
+        .theme-toggle {
+            position: fixed;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease, color 0.3s ease;
+            z-index: 10;
+            top: 20px;
+            right: 20px;
+            background-color: var(--text-color);
+            color: var(--bg-color);
+            border: none;
+        }
     </style>
-    <script type="text/javascript" src="https://chir.ag/projects/ntc/ntc.js"></script>
 </head>
 
 <body>
-    <div id="app">
-        <h1>Color Palette Generator</h1>
-        <div>
-            <label for="colorCount">Number of colors: </label>
-            <select id="colorCount">
-                <option value="3">3</option>
-                <option value="4">4</option>
-                <option value="5" selected>5</option>
-                <option value="6">6</option>
-                <option value="7">7</option>
-            </select>
-        </div>
-        <div id="palette"></div>
-        <button id="generate">Generate New Palette</button>
-        <div id="examples">
-            <div class="example-column">
-                <h2>Example Uses</h2>
-                <details>
-                    <summary>Website Color Scheme</summary>
-                    <div class="example-content" id="website-example">
-                        <!-- Content will be dynamically generated -->
-                    </div>
-                </details>
-                <details>
-                    <summary>Infographic Design</summary>
-                    <div class="example-content" id="infographic-example">
-                        <!-- Content will be dynamically generated -->
-                    </div>
-                </details>
-                <details>
-                    <summary>Fashion Palette</summary>
-                    <div class="example-content" id="fashion-example">
-                        <!-- Content will be dynamically generated -->
-                    </div>
-                </details>
+    <div class="container">
+        <div id="app">
+            <h1>Color Palette Generator</h1>
+            <div>
+                <label for="colorCount">Number of colors: </label>
+                <select id="colorCount">
+                    <option value="3">3</option>
+                    <option value="4">4</option>
+                    <option value="5" selected>5</option>
+                    <option value="6">6</option>
+                    <option value="7">7</option>
+                </select>
             </div>
-            <div class="example-column">
-                <h2>Code Examples</h2>
-                <details>
-                    <summary>CSS Variables</summary>
-                    <div class="example-content">
-                        <pre id="css-vars"></pre>
-                        <button class="copy-button" data-target="css-vars">Copy CSS</button>
-                    </div>
-                </details>
-                <details>
-                    <summary>JavaScript Array</summary>
-                    <div class="example-content">
-                        <pre id="js-array"></pre>
-                        <button class="copy-button" data-target="js-array">Copy JavaScript</button>
-                    </div>
-                </details>
-                <details>
-                    <summary>Python List</summary>
-                    <div class="example-content">
-                        <pre id="python-list"></pre>
-                        <button class="copy-button" data-target="python-list">Copy Python</button>
-                    </div>
-                </details>
+            <div id="palette"></div>
+            <button id="generate">Generate New Palette</button>
+            <div id="examples">
+                <div class="example-column">
+                    <h2>Example Uses</h2>
+                    <details>
+                        <summary>Website Color Scheme</summary>
+                        <div class="example-content" id="website-example">
+                            <!-- Content will be dynamically generated -->
+                        </div>
+                    </details>
+                    <details>
+                        <summary>Infographic Design</summary>
+                        <div class="example-content" id="infographic-example">
+                            <!-- Content will be dynamically generated -->
+                        </div>
+                    </details>
+                    <details>
+                        <summary>Fashion Palette</summary>
+                        <div class="example-content" id="fashion-example">
+                            <!-- Content will be dynamically generated -->
+                        </div>
+                    </details>
+                </div>
+                <div class="example-column">
+                    <h2>Code Examples</h2>
+                    <details>
+                        <summary>CSS Variables</summary>
+                        <div class="example-content">
+                            <pre id="css-vars"></pre>
+                            <button class="copy-button" data-target="css-vars">Copy CSS</button>
+                        </div>
+                    </details>
+                    <details>
+                        <summary>JavaScript Array</summary>
+                        <div class="example-content">
+                            <pre id="js-array"></pre>
+                            <button class="copy-button" data-target="js-array">Copy JavaScript</button>
+                        </div>
+                    </details>
+                    <details>
+                        <summary>Python List</summary>
+                        <div class="example-content">
+                            <pre id="python-list"></pre>
+                            <button class="copy-button" data-target="python-list">Copy Python</button>
+                        </div>
+                    </details>
+                </div>
             </div>
         </div>
     </div>
+    <button class="theme-toggle">Dark Theme</button>
 
     <script>
         let colors = [];
@@ -299,16 +364,14 @@
                 .append("svg")
                 .attr("width", width)
                 .attr("height", height + 40)
-                .style("overflow", "visible") // Add this line
+                .style("overflow", "visible")
                 .append("g")
                 .attr("transform", `translate(${width / 2},${(height + 40) / 2})`);
-
 
             const pie = d3.pie().value(1);
             const arc = d3.arc().innerRadius(0).outerRadius(radius);
             const hoverArc = d3.arc().innerRadius(0).outerRadius(radius + hoverOffset);
-            const labelArc = d3.arc().innerRadius(radius * 0.8).outerRadius(radius * 0.6); // New arc for labels
-
+            const labelArc = d3.arc().innerRadius(radius * 0.8).outerRadius(radius * 0.6);
 
             const arcs = svg.selectAll("arc")
                 .data(pie(colors))
@@ -336,9 +399,8 @@
                     }
                 });
 
-
             arcs.append("text")
-                .attr("transform", d => `translate(${labelArc.centroid(d)})`) // Use labelArc for positioning
+                .attr("transform", d => `translate(${labelArc.centroid(d)})`)
                 .attr("dy", "0.3em")
                 .attr("text-anchor", "middle")
                 .attr("class", "color-info")
@@ -355,26 +417,25 @@
                         .attr("stroke", locked[i] ? (chroma.contrast(colors[i], "#000") > 4.5 ? "black" : "red") : "none")
                         .attr("stroke-width", locked[i] ? 1.5 : 0);
                     d3.select(event.currentTarget).select("text")
-                        .text(getColorText(i)) // Update text using the new function
-                        .call(wrap, 80); // Re-wrap the updated text
+                        .text(getColorText(i))
+                        .call(wrap, 80);
                 }
 
                 if (locked.every(l => l)) {
-                    // Remove stroke from all paths
                     arcs.selectAll("path")
                         .attr("stroke", "none");
                     animateToSwatches(svg, arcs);
                 }
             });
         }
-        // New helper function to get color text
+
         function getColorText(index, isSwatch = false) {
             const color = chroma(colors[index]);
             const colorName = ntc.name(color.hex())[1];
             const rval = `${colorName}\n${color.hex()}${!isSwatch ? `\n${locked[index] ? "🔒" : ""}` : ''}`
             return rval;
         }
-        // Add this function to wrap long text
+
         function wrap(text, width) {
             text.each(function () {
                 var text = d3.select(this),
@@ -382,7 +443,7 @@
                     word,
                     line = [],
                     lineNumber = 0,
-                    lineHeight = 1.1, // ems
+                    lineHeight = 1.1,
                     y = text.attr("y"),
                     dy = parseFloat(text.attr("dy")),
                     tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
@@ -404,18 +465,15 @@
             const height = 400;
             const numColors = colors.length;
             const swatchMargin = 50;
-            const swatchWidth = (width - (numColors - 1) * swatchMargin) / numColors; // Subtracting margins
+            const swatchWidth = Math.max((Math.min(width, numColors * 250) - (numColors - 1) * swatchMargin) / numColors, 200);
             const swatchHeight = swatchWidth;
 
             arcs.on("click", null);
-            // Remove text elements
             svg.selectAll("text").remove();
             arcs.select("path")
                 .on("mouseover", null)
                 .on("mouseout", null)
 
-
-            // Animate pie slices to swatches
             arcs.select("path")
                 .transition()
                 .duration(1000)
@@ -427,12 +485,10 @@
                     };
                 })
                 .on("end", function (d, i) {
-                    // Calculate position for swatch
                     const startX = -width * 0.8;
-                    const y = 0; // Center vertically
+                    const y = 0;
                     const x = startX + i * (swatchWidth + swatchMargin);
 
-                    // Transform to swatch
                     d3.select(this)
                         .transition()
                         .duration(1000)
@@ -440,19 +496,28 @@
                         .attr("d", d3.symbol().type(d3.symbolSquare).size(swatchWidth * swatchHeight))
                         .attr("class", "swatch");
 
-                    // Add color label
                     svg.append("text")
-                        .attr("x", x - swatchWidth / 4 + 20)
-                        .attr("y", y + swatchHeight / 2 + 30)
+                        .attr("x", x)
+                        .attr("y", y)
                         .attr("text-anchor", "middle")
-                        .attr("fill", d3.color(colors[i]).darker(2))
-                        .style("font-size", "14px")
-                        .style("opacity", 1)
-                        .text(getColorText(i, true))
+                        .attr("dominant-baseline", "central")
+                        .attr("fill", chroma.contrast(colors[i], '#fff') > 2.5 ? d3.color(colors[i]).brighter(2) : d3.color(colors[i]).darker(2))
+                        .style("font-size", "16px")
+                        .style("opacity", 0)
+                        .each(function () {
+                            const lines = getColorText(i, true).split('\n');
+                            const lineHeight = 1.2; // Adjust this value to change line spacing
+                            lines.forEach((line, index) => {
+                                d3.select(this).append("tspan")
+                                    .attr("x", x)
+                                    .attr("dy", index === 0 ? `-${(lines.length - 1) * lineHeight / 2}em` : `${lineHeight}em`)
+                                    .text(line);
+                            });
+                        })
                         .transition()
                         .duration(500)
                         .style("opacity", 1);
-                    // Add this block to re-enable hover and click events
+
                     d3.select(this)
                         .on("mouseover", function () {
                             d3.select(this).transition()
@@ -466,7 +531,6 @@
                         })
                         .on("click", function () {
                             navigator.clipboard.writeText(colors[i]);
-                            // showTooltip(event, 'Copied!');
                             showTooltip(event, 'Copied!', {
                                 bgColor: colors[i],
                                 textColor: chroma.contrast(colors[i], '#fff') > 4.5 ? '#fff' : '#000',
@@ -474,10 +538,8 @@
                                 style: 'svg'
                             });
                         });
-
                 });
 
-            // Center the entire group of swatches
             svg.transition()
                 .duration(1000)
                 .attr("transform", `translate(${width / 2}, ${height / 2})`);
@@ -584,8 +646,6 @@
             }
         }
 
-
-
         function updateExamples() {
             // Website Color Scheme
             const websiteExample = document.getElementById("website-example");
@@ -630,7 +690,6 @@
                 </div>
                 <p>Combine these colors for a trendy fashion collection!</p>
             `;
-
         }
 
         function updateCodeExamples() {
@@ -643,7 +702,7 @@
 
             // JavaScript Array
             document.getElementById('js-array').textContent = `const colors = {
-    ${colors.map((color, index) => `'${colorNames[index].replaceAll(' ', '-')}': '${color}'`).join(',\n')}
+    ${colors.map((color, index) => `'${colorNames[index].replaceAll(' ', '-')}': '${color}'`).join(',\n    ')}
 };`;
 
             // Python List
@@ -669,6 +728,26 @@
                 }, 2000);
             });
         });
+
+        // Theme toggle functionality
+        const themeToggle = document.querySelector('.theme-toggle');
+        const prefersDarkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+
+        function setTheme(isDark) {
+            document.body.classList.toggle('dark-theme', isDark);
+            themeToggle.textContent = isDark ? 'Light Theme' : 'Dark Theme';
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        }
+
+        // Set initial theme
+        const storedTheme = localStorage.getItem('theme');
+        setTheme(storedTheme === 'dark' || (storedTheme === null && prefersDarkScheme.matches));
+
+        // Theme toggle event listener
+        themeToggle.addEventListener('click', () => setTheme(!document.body.classList.contains('dark-theme')));
+
+        // Listen for system theme changes
+        prefersDarkScheme.addEventListener('change', (e) => setTheme(e.matches));
 
         generatePalette();
     </script>
