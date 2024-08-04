@@ -257,6 +257,14 @@
                 <select id="background">
                     <option value="starry">Starry Night</option>
                     <option value="sunset">Sunset Gradient</option>
+                    <option value="geometric">Geometric Patterns</option>
+                    <option value="nebula">Cosmic Nebula</option>
+                    <option value="cityscape">Night Cityscape</option>
+                    <option value="underwater">Deep Sea</option>
+                    <option value="forest">Misty Forest</option>
+                    <option value="desert">Desert Dunes</option>
+                    <option value="abstract">Abstract Art</option>
+                    <option value="space">Deep Space</option>
                     <option value="none">None</option>
                 </select>
             </label>
@@ -367,19 +375,28 @@
             return rays;
         };
 
-        const generateBackground = (type) => {
-            if (type === 'starry') {
-                const stars = Array.from({ length: 100 }, () => ({
-                    x: Math.random() * 300,
-                    y: Math.random() * 300,
-                    r: Math.random() * 1.5
-                }));
-                return `
+        const backgroundOptions = [
+            {
+                name: 'none',
+                generate: () => ''
+            },
+            {
+                name: 'starry',
+                generate: () => {
+                    const stars = Array.from({ length: 100 }, () => ({
+                        x: Math.random() * 300,
+                        y: Math.random() * 300,
+                        r: Math.random() * 1.5
+                    }));
+                    return `
     <rect width="300" height="300" fill="#000033" />
     ${stars.map(star => `<circle cx="${star.x}" cy="${star.y}" r="${star.r}" fill="white" opacity="${Math.random() * 0.5 + 0.5}" />`).join('')}
-                `;
-            } else if (type === 'sunset') {
-                return `
+            `;
+                }
+            },
+            {
+                name: 'sunset',
+                generate: () => `
     <defs>
         <linearGradient id="sunsetGradient" x1="0%" y1="0%" x2="0%" y2="100%">
             <stop offset="0%" style="stop-color:#FF6B6B;stop-opacity:1" />
@@ -388,10 +405,170 @@
         </linearGradient>
     </defs>
     <rect width="300" height="300" fill="url(#sunsetGradient)" />
-                `;
-            } else {
-                return '';
+        `
+            },
+            {
+                name: 'geometric',
+                generate: () => {
+                    const shapes = [];
+                    for (let i = 0; i < 20; i++) {
+                        const x = Math.random() * 300;
+                        const y = Math.random() * 300;
+                        const size = Math.random() * 50 + 10;
+                        const opacity = Math.random() * 0.5 + 0.1;
+                        const color = `hsl(${Math.random() * 360}, 70%, 50%)`;
+                        shapes.push(`<rect x="${x}" y="${y}" width="${size}" height="${size}" fill="${color}" opacity="${opacity}" transform="rotate(${Math.random() * 45}, ${x + size / 2}, ${y + size / 2})" />`);
+                    }
+                    return `
+    <rect width="300" height="300" fill="#f0f0f0" />
+    ${shapes.join('')}
+            `;
+                }
+            },
+            {
+                name: 'nebula',
+                generate: () => `
+    <defs>
+        <radialGradient id="nebulaGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+            <stop offset="0%" style="stop-color:#ff00ff;stop-opacity:0.7" />
+            <stop offset="50%" style="stop-color:#00ffff;stop-opacity:0.5" />
+            <stop offset="100%" style="stop-color:#0000ff;stop-opacity:0.3" />
+        </radialGradient>
+    </defs>
+    <rect width="300" height="300" fill="#000" />
+    <circle cx="150" cy="150" r="200" fill="url(#nebulaGradient)" />
+        `
+            },
+            {
+                name: 'cityscape',
+                generate: () => `
+    <defs>
+        <linearGradient id="skyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#001f3f;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#1a1a2e;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    <rect width="300" height="300" fill="url(#skyGradient)" />
+    ${Array.from({ length: 20 }, (_, i) => `
+        <rect x="${Math.random() * 300}" y="${150 + Math.random() * 150}" width="${10 + Math.random() * 30}" height="${50 + Math.random() * 100}" fill="#2c3e50" />
+        ${Array.from({ length: Math.floor(Math.random() * 5 + 2) }, (_, j) => `
+            <rect x="${Math.random() * 300}" y="${150 + Math.random() * 150}" width="2" height="2" fill="#f1c40f" />
+        `).join('')}
+    `).join('')}
+    `
+            },
+            {
+                name: 'underwater',
+                generate: () => `
+    <defs>
+        <linearGradient id="waterGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#01579b;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#0277bd;stop-opacity:1" />
+        </linearGradient>
+        <filter id="waterRipple">
+            <feTurbulence type="fractalNoise" baseFrequency="0.01" numOctaves="2" result="turbulence" />
+            <feDisplacementMap in="SourceGraphic" in2="turbulence" scale="10" xChannelSelector="R" yChannelSelector="G" />
+        </filter>
+    </defs>
+    <rect width="300" height="300" fill="url(#waterGradient)" filter="url(#waterRipple)" />
+    ${Array.from({ length: 10 }, () => `
+        <path d="M${Math.random() * 300},${Math.random() * 300} q${-10 - Math.random() * 20},${-10 - Math.random() * 20} ${20 + Math.random() * 40},0" 
+              stroke="#81d4fa" fill="none" stroke-width="2" opacity="${0.3 + Math.random() * 0.4}" />
+    `).join('')}
+    `
+            },
+            {
+                name: 'forest',
+                generate: () => `
+    <defs>
+        <linearGradient id="mistyGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#2ecc71;stop-opacity:0.6" />
+            <stop offset="100%" style="stop-color:#27ae60;stop-opacity:0.8" />
+        </linearGradient>
+    </defs>
+    <rect width="300" height="300" fill="#1e272e" />
+    <rect width="300" height="300" fill="url(#mistyGradient)" />
+    ${Array.from({ length: 30 }, () => {
+                    const x = Math.random() * 300;
+                    const y = 150 + Math.random() * 150;
+                    const width = 10 + Math.random() * 20;
+                    return `
+        <path d="M${x},${y} l${width / 2},${-width} l${width / 2},${width} z" fill="#2ecc71" opacity="${0.6 + Math.random() * 0.4}" />
+        <rect x="${x + width / 4}" y="${y}" width="${width / 4}" height="${20 + Math.random() * 30}" fill="#795548" />
+        `;
+                }).join('')}
+    `
+            },
+            {
+                name: 'desert',
+                generate: () => `
+    <defs>
+        <linearGradient id="desertGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" style="stop-color:#f39c12;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#e67e22;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    <rect width="300" height="300" fill="url(#desertGradient)" />
+    <path d="M0,200 Q75,150 150,200 T300,200 L300,300 L0,300 Z" fill="#d35400" />
+    ${Array.from({ length: 5 }, () => {
+                    const x = Math.random() * 300;
+                    const y = 150 + Math.random() * 100;
+                    return `<circle cx="${x}" cy="${y}" r="${1 + Math.random() * 2}" fill="#ecf0f1" />`;
+                }).join('')}
+    `
+            },
+            {
+                name: 'abstract',
+                generate: () => `
+    <defs>
+        <linearGradient id="abstractGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" style="stop-color:#3498db;stop-opacity:1" />
+            <stop offset="50%" style="stop-color:#8e44ad;stop-opacity:1" />
+            <stop offset="100%" style="stop-color:#e74c3c;stop-opacity:1" />
+        </linearGradient>
+    </defs>
+    <rect width="300" height="300" fill="url(#abstractGradient)" />
+    ${Array.from({ length: 20 }, () => {
+                    const x = Math.random() * 300;
+                    const y = Math.random() * 300;
+                    const size = 10 + Math.random() * 40;
+                    return `
+        <circle cx="${x}" cy="${y}" r="${size}" fill="rgba(255,255,255,0.1)" />
+        <path d="M${x - size},${y} L${x + size},${y} M${x},${y - size} L${x},${y + size}" stroke="rgba(255,255,255,0.2)" stroke-width="2" />
+        `;
+                }).join('')}
+    `
+            },
+            {
+                name: 'space',
+                generate: () => `
+    <rect width="300" height="300" fill="#000000" />
+    ${Array.from({ length: 200 }, () => {
+                    const x = Math.random() * 300;
+                    const y = Math.random() * 300;
+                    const size = Math.random() * 1.5;
+                    const opacity = 0.1 + Math.random() * 0.9;
+                    return `<circle cx="${x}" cy="${y}" r="${size}" fill="white" opacity="${opacity}" />`;
+                }).join('')}
+    <circle cx="50" cy="50" r="30" fill="url(#planetGradient1)" />
+    <circle cx="250" cy="200" r="20" fill="url(#planetGradient2)" />
+    <defs>
+        <radialGradient id="planetGradient1">
+            <stop offset="0%" stop-color="#ff6b6b" />
+            <stop offset="100%" stop-color="#ee5253" />
+        </radialGradient>
+        <radialGradient id="planetGradient2">
+            <stop offset="0%" stop-color="#54a0ff" />
+            <stop offset="100%" stop-color="#5f27cd" />
+        </radialGradient>
+    </defs>
+    `
             }
+        ];
+
+        const generateBackground = (type) => {
+            const background = backgroundOptions.find(bg => bg.name === type);
+            return background ? background.generate() : '';
         };
         const viewToggle = document.getElementById('viewToggle');
         const simulatorOutput = document.querySelector('.simulator-output');

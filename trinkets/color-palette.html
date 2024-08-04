@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Color Palette Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chroma-js/2.4.2/chroma.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+
+        #app {
+            text-align: center;
+            max-width: 1200px;
+            min-width: 60vw;
+            padding: 20px;
+        }
+
+        #palette {
+            width: 440px;
+            height: 440px;
+            margin: 20px auto;
+        }
+
+        .color-info {
+            font-size: 12px;
+            pointer-events: none;
+        }
+
+        button,
+        select {
+            background-color: #4CAF50;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 25px;
+            transition: all 0.3s ease;
+        }
+
+        button:hover,
+        select:hover {
+            background-color: #45a049;
+            transform: scale(1.05);
+        }
+
+        .arc path {
+            transition: all 0.3s ease;
+        }
+
+        #examples {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .example-column {
+            width: 48%;
+        }
+
+        summary {
+            cursor: pointer;
+            padding: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+
+        summary:hover {
+            background-color: #d0d0d0;
+        }
+
+        .example-content {
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .color-swatch {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            margin-right: 5px;
+            border: 1px solid #000;
+        }
+
+        .clickable-color {
+            cursor: pointer;
+            padding: 2px 5px;
+            border-radius: 3px;
+            transition: all 0.3s ease;
+        }
+
+        .clickable-color:hover {
+            transform: scale(1.1);
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.1);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        .pulse {
+            animation: pulse 0.5s;
+        }
+
+        pre {
+            background-color: #f4f4f4;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        .copy-button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 14px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .swatch {
+            width: 60px;
+            height: 60px;
+            margin: 5px;
+            border-radius: 5px;
+            display: inline-block;
+            transition: all 0.5s ease;
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .tooltip::after {
+            content: '';
+            position: absolute;
+            top: 100%;
+            left: 50%;
+            margin-left: -5px;
+            border-width: 5px;
+            border-style: solid;
+        }
+
+        .tooltip-svg {
+            position: absolute;
+            pointer-events: none;
+        }
+    </style>
+    <script type="text/javascript" src="https://chir.ag/projects/ntc/ntc.js"></script>
+</head>
+
+<body>
+    <div id="app">
+        <h1>Color Palette Generator</h1>
+        <div>
+            <label for="colorCount">Number of colors: </label>
+            <select id="colorCount">
+                <option value="3">3</option>
+                <option value="4">4</option>
+                <option value="5" selected>5</option>
+                <option value="6">6</option>
+                <option value="7">7</option>
+            </select>
+        </div>
+        <div id="palette"></div>
+        <button id="generate">Generate New Palette</button>
+        <div id="examples">
+            <div class="example-column">
+                <h2>Example Uses</h2>
+                <details>
+                    <summary>Website Color Scheme</summary>
+                    <div class="example-content" id="website-example">
+                        <!-- Content will be dynamically generated -->
+                    </div>
+                </details>
+                <details>
+                    <summary>Infographic Design</summary>
+                    <div class="example-content" id="infographic-example">
+                        <!-- Content will be dynamically generated -->
+                    </div>
+                </details>
+                <details>
+                    <summary>Fashion Palette</summary>
+                    <div class="example-content" id="fashion-example">
+                        <!-- Content will be dynamically generated -->
+                    </div>
+                </details>
+            </div>
+            <div class="example-column">
+                <h2>Code Examples</h2>
+                <details>
+                    <summary>CSS Variables</summary>
+                    <div class="example-content">
+                        <pre id="css-vars"></pre>
+                        <button class="copy-button" data-target="css-vars">Copy CSS</button>
+                    </div>
+                </details>
+                <details>
+                    <summary>JavaScript Array</summary>
+                    <div class="example-content">
+                        <pre id="js-array"></pre>
+                        <button class="copy-button" data-target="js-array">Copy JavaScript</button>
+                    </div>
+                </details>
+                <details>
+                    <summary>Python List</summary>
+                    <div class="example-content">
+                        <pre id="python-list"></pre>
+                        <button class="copy-button" data-target="python-list">Copy Python</button>
+                    </div>
+                </details>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let colors = [];
+        let locked = [];
+        ntc.init()
+
+        function generateColor() {
+            return chroma.random().hex();
+        }
+
+        function generatePalette() {
+            const colorCount = parseInt(document.getElementById("colorCount").value);
+            if (colors.length !== colorCount) {
+                colors = new Array(colorCount).fill(null);
+                locked = new Array(colorCount).fill(false);
+            }
+            for (let i = 0; i < colorCount; i++) {
+                if (!locked[i]) {
+                    colors[i] = generateColor();
+                }
+            }
+            updatePalette();
+            updateExamples();
+            updateCodeExamples();
+
+            // Update the click event listeners
+            document.querySelectorAll('.clickable-color').forEach(el => {
+                el.addEventListener('click', function (event) {
+                    navigator.clipboard.writeText(this.textContent);
+                    showTooltip(event, 'Copied!', {
+                        style: 'default',
+                        position: 'bottom'
+                    });
+                });
+            });
+        }
+
+        function updatePalette() {
+            const width = 400;
+            const height = 400;
+            const radius = Math.min(width, height) / 2;
+            const hoverOffset = 5;
+
+            d3.select("#palette").selectAll("*").remove();
+
+            const svg = d3.select("#palette")
+                .append("svg")
+                .attr("width", width)
+                .attr("height", height + 40)
+                .style("overflow", "visible") // Add this line
+                .append("g")
+                .attr("transform", `translate(${width / 2},${(height + 40) / 2})`);
+
+
+            const pie = d3.pie().value(1);
+            const arc = d3.arc().innerRadius(0).outerRadius(radius);
+            const hoverArc = d3.arc().innerRadius(0).outerRadius(radius + hoverOffset);
+            const labelArc = d3.arc().innerRadius(radius * 0.8).outerRadius(radius * 0.6); // New arc for labels
+
+
+            const arcs = svg.selectAll("arc")
+                .data(pie(colors))
+                .enter()
+                .append("g")
+                .attr("class", "arc");
+
+            arcs.append("path")
+                .attr("d", arc)
+                .attr("fill", (d, i) => colors[i])
+                .attr("stroke", (d, i) => locked[i] ? "#000" : "none")
+                .attr("stroke-width", 3)
+                .on("mouseover", function (event, d) {
+                    if (!d3.select(this).classed("swatch")) {
+                        d3.select(this).transition()
+                            .duration(200)
+                            .attr("d", hoverArc);
+                    }
+                })
+                .on("mouseout", function (event, d) {
+                    if (!d3.select(this).classed("swatch")) {
+                        d3.select(this).transition()
+                            .duration(200)
+                            .attr("d", arc);
+                    }
+                });
+
+
+            arcs.append("text")
+                .attr("transform", d => `translate(${labelArc.centroid(d)})`) // Use labelArc for positioning
+                .attr("dy", "0.3em")
+                .attr("text-anchor", "middle")
+                .attr("class", "color-info")
+                .attr("fill", (d, i) => chroma.contrast(colors[i], "#fff") > 4.5 ? "#fff" : "#000")
+                .text((d, i) => getColorText(i))
+                .call(wrap, 80);
+
+            arcs.on("click", (event, d) => {
+                const i = colors.indexOf(d.data);
+                const allLocked = locked.every(lock => lock)
+                if (!allLocked) {
+                    locked[i] = !locked[i];
+                    d3.select(event.currentTarget).select("path")
+                        .attr("stroke", locked[i] ? (chroma.contrast(colors[i], "#000") > 4.5 ? "black" : "red") : "none")
+                        .attr("stroke-width", locked[i] ? 1.5 : 0);
+                    d3.select(event.currentTarget).select("text")
+                        .text(getColorText(i)) // Update text using the new function
+                        .call(wrap, 80); // Re-wrap the updated text
+                }
+
+                if (locked.every(l => l)) {
+                    // Remove stroke from all paths
+                    arcs.selectAll("path")
+                        .attr("stroke", "none");
+                    animateToSwatches(svg, arcs);
+                }
+            });
+        }
+        // New helper function to get color text
+        function getColorText(index, isSwatch = false) {
+            const color = chroma(colors[index]);
+            const colorName = ntc.name(color.hex())[1];
+            const rval = `${colorName}\n${color.hex()}${!isSwatch ? `\n${locked[index] ? "🔒" : ""}` : ''}`
+            return rval;
+        }
+        // Add this function to wrap long text
+        function wrap(text, width) {
+            text.each(function () {
+                var text = d3.select(this),
+                    words = text.text().split(/\n/).reverse(),
+                    word,
+                    line = [],
+                    lineNumber = 0,
+                    lineHeight = 1.1, // ems
+                    y = text.attr("y"),
+                    dy = parseFloat(text.attr("dy")),
+                    tspan = text.text(null).append("tspan").attr("x", 0).attr("y", y).attr("dy", dy + "em");
+                while (word = words.pop()) {
+                    line.push(word);
+                    tspan.text(line.join(" "));
+                    if (tspan.node().getComputedTextLength() > width) {
+                        line.pop();
+                        tspan.text(line.join(" "));
+                        line = [word];
+                        tspan = text.append("tspan").attr("x", 0).attr("y", y).attr("dy", ++lineNumber * lineHeight + dy + "em").text(word);
+                    }
+                }
+            });
+        }
+
+        function animateToSwatches(svg, arcs) {
+            const width = window.innerWidth * 0.7;
+            const height = 400;
+            const numColors = colors.length;
+            const swatchMargin = 50;
+            const swatchWidth = (width - (numColors - 1) * swatchMargin) / numColors; // Subtracting margins
+            const swatchHeight = swatchWidth;
+
+            arcs.on("click", null);
+            // Remove text elements
+            svg.selectAll("text").remove();
+            arcs.select("path")
+                .on("mouseover", null)
+                .on("mouseout", null)
+
+
+            // Animate pie slices to swatches
+            arcs.select("path")
+                .transition()
+                .duration(1000)
+                .attrTween("d", function (d, i) {
+                    const interpolate = d3.interpolate(d.startAngle, d.endAngle);
+                    return function (t) {
+                        d.endAngle = interpolate(t);
+                        return d3.arc().innerRadius(0).outerRadius(200)(d);
+                    };
+                })
+                .on("end", function (d, i) {
+                    // Calculate position for swatch
+                    const startX = -width * 0.8;
+                    const y = 0; // Center vertically
+                    const x = startX + i * (swatchWidth + swatchMargin);
+
+                    // Transform to swatch
+                    d3.select(this)
+                        .transition()
+                        .duration(1000)
+                        .attr("transform", `translate(${x}, ${y})`)
+                        .attr("d", d3.symbol().type(d3.symbolSquare).size(swatchWidth * swatchHeight))
+                        .attr("class", "swatch");
+
+                    // Add color label
+                    svg.append("text")
+                        .attr("x", x - swatchWidth / 4 + 20)
+                        .attr("y", y + swatchHeight / 2 + 30)
+                        .attr("text-anchor", "middle")
+                        .attr("fill", d3.color(colors[i]).darker(2))
+                        .style("font-size", "14px")
+                        .style("opacity", 1)
+                        .text(getColorText(i, true))
+                        .transition()
+                        .duration(500)
+                        .style("opacity", 1);
+                    // Add this block to re-enable hover and click events
+                    d3.select(this)
+                        .on("mouseover", function () {
+                            d3.select(this).transition()
+                                .duration(200)
+                                .attr("transform", `translate(${x}, ${y}) scale(1.1)`);
+                        })
+                        .on("mouseout", function () {
+                            d3.select(this).transition()
+                                .duration(200)
+                                .attr("transform", `translate(${x}, ${y}) scale(1)`);
+                        })
+                        .on("click", function () {
+                            navigator.clipboard.writeText(colors[i]);
+                            // showTooltip(event, 'Copied!');
+                            showTooltip(event, 'Copied!', {
+                                bgColor: colors[i],
+                                textColor: chroma.contrast(colors[i], '#fff') > 4.5 ? '#fff' : '#000',
+                                position: 'mouse',
+                                style: 'svg'
+                            });
+                        });
+
+                });
+
+            // Center the entire group of swatches
+            svg.transition()
+                .duration(1000)
+                .attr("transform", `translate(${width / 2}, ${height / 2})`);
+        }
+
+        function showTooltip(event, text, options = {}) {
+            const {
+                bgColor = 'rgba(0, 0, 0, 0.8)',
+                textColor = 'white',
+                position = 'above',
+                style = 'default'
+            } = options;
+
+            if (style === 'default') {
+                const tooltip = document.createElement('div');
+                tooltip.className = 'tooltip';
+                tooltip.textContent = text;
+                tooltip.style.backgroundColor = bgColor;
+                tooltip.style.color = textColor;
+                document.body.appendChild(tooltip);
+
+                let left, top;
+                if (position === 'mouse') {
+                    left = event.clientX;
+                    top = event.clientY;
+                } else if (position === 'bottom') {
+                    left = window.innerWidth / 2 - tooltip.offsetWidth / 2;
+                    top = window.innerHeight * 0.96;
+                } else {
+                    const rect = event.target.getBoundingClientRect();
+                    left = rect.left + rect.width / 2 - tooltip.offsetWidth / 2;
+                    top = rect.top - tooltip.offsetHeight - 10;
+                }
+
+                tooltip.style.left = `${left}px`;
+                tooltip.style.top = `${top}px`;
+                tooltip.style.zIndex = 100
+
+                tooltip.style.setProperty('--tooltip-bg-color', bgColor);
+                tooltip.style.setProperty('--tooltip-text-color', textColor);
+
+                setTimeout(() => {
+                    tooltip.style.opacity = '1';
+                }, 10);
+
+                setTimeout(() => {
+                    tooltip.style.opacity = '0';
+                    setTimeout(() => {
+                        document.body.removeChild(tooltip);
+                    }, 300);
+                }, 2000);
+            } else if (style === 'svg') {
+                const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+                svg.setAttribute('class', 'tooltip-svg');
+                svg.setAttribute('width', '200');
+                svg.setAttribute('height', '100');
+
+                const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                circle.setAttribute('cx', '100');
+                circle.setAttribute('cy', '50');
+                circle.setAttribute('r', '0');
+                circle.setAttribute('fill', 'none');
+                circle.setAttribute('stroke', bgColor);
+                circle.setAttribute('stroke-width', '2');
+
+                const textElement = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                textElement.setAttribute('x', '100');
+                textElement.setAttribute('y', '55');
+                textElement.setAttribute('text-anchor', 'middle');
+                textElement.setAttribute('fill', textColor);
+                textElement.textContent = text;
+
+                svg.appendChild(circle);
+                svg.appendChild(textElement);
+                document.body.appendChild(svg);
+
+                let left, top;
+                if (position === 'mouse') {
+                    left = event.clientX - 100;
+                    top = event.clientY - 50;
+                } else {
+                    const rect = event.target.getBoundingClientRect();
+                    left = rect.left + rect.width / 2 - 100;
+                    top = rect.top - 110;
+                }
+
+                svg.style.left = `${left}px`;
+                svg.style.top = `${top}px`;
+
+                circle.animate([
+                    { r: 0 },
+                    { r: 40 }
+                ], {
+                    duration: 300,
+                    fill: 'forwards'
+                });
+
+                setTimeout(() => {
+                    svg.style.opacity = '0';
+                    setTimeout(() => {
+                        document.body.removeChild(svg);
+                    }, 300);
+                }, 2000);
+            }
+        }
+
+
+
+        function updateExamples() {
+            // Website Color Scheme
+            const websiteExample = document.getElementById("website-example");
+            websiteExample.style.backgroundColor = colors[0];
+            websiteExample.style.color = chroma.contrast(colors[0], colors[1]) > 4.5 ? colors[1] : colors[2];
+            websiteExample.innerHTML = `
+                <h3 style="color: ${colors[Math.min(3, colors.length - 1)]}">Website Color Scheme</h3>
+                <p>Background: <span class="color-swatch" style="background-color: ${colors[0]}"></span><span class="clickable-color" style="background-color: ${colors[0]}; color: ${chroma.contrast(colors[0], '#000') > 4.5 ? '#000' : '#fff'}">${colors[0]}</span></p>
+                <p>Text: <span class="color-swatch" style="background-color: ${websiteExample.style.color}"></span><span class="clickable-color" style="background-color: ${websiteExample.style.color}; color: ${chroma.contrast(websiteExample.style.color, '#000') > 4.5 ? '#000' : '#fff'}">${websiteExample.style.color}</span></p>
+                <p>Accent: <span class="color-swatch" style="background-color: ${colors[Math.min(3, colors.length - 1)]}"></span><span class="clickable-color" style="background-color: ${colors[Math.min(3, colors.length - 1)]}; color: ${chroma.contrast(colors[Math.min(3, colors.length - 1)], '#000') > 4.5 ? '#000' : '#fff'}">${colors[Math.min(3, colors.length - 1)]}</span></p>
+                <button style="background-color: ${colors[colors.length - 1]}; color: ${chroma.contrast(colors[colors.length - 1], '#fff') > 4.5 ? '#fff' : '#000'}">Call to Action</button>
+            `;
+
+            // Infographic Design
+            const infographicExample = document.getElementById("infographic-example");
+            infographicExample.style.backgroundColor = colors[1];
+            infographicExample.style.color = chroma.contrast(colors[1], '#fff') > 4.5 ? '#fff' : '#000';
+            infographicExample.innerHTML = `
+                <h3>Infographic Color Palette</h3>
+                <div style="display: flex; flex-wrap: wrap; justify-content: space-around; margin-top: 20px;">
+                    ${colors.map((color, index) => `
+                        <div style="background-color: ${color}; width: 80px; height: 80px; margin: 10px; display: flex; align-items: center; justify-content: center; color: ${chroma.contrast(color, '#fff') > 4.5 ? '#fff' : '#000'}">
+                            <span class="clickable-color" style="background-color: ${color}; color: ${chroma.contrast(color, '#000') > 4.5 ? '#000' : '#fff'}">${color}</span>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+
+            // Fashion Palette
+            const fashionExample = document.getElementById("fashion-example");
+            fashionExample.style.backgroundColor = '#fff';
+            fashionExample.style.color = '#000';
+            fashionExample.innerHTML = `
+                <h3>Fashion Color Palette</h3>
+                <div style="display: flex; flex-wrap: wrap; justify-content: space-around; margin-top: 20px;">
+                    ${colors.map(color => `
+                        <div style="text-align: center; margin: 10px;">
+                            <div style="background-color: ${color}; width: 80px; height: 80px; border-radius: 50%; margin-bottom: 10px;"></div>
+                            <p><span class="clickable-color" style="background-color: ${color}; color: ${chroma.contrast(color, '#000') > 4.5 ? '#000' : '#fff'}">${color}</span></p>
+                        </div>
+                    `).join('')}
+                </div>
+                <p>Combine these colors for a trendy fashion collection!</p>
+            `;
+
+        }
+
+        function updateCodeExamples() {
+            const colorNames = colors.map(color => ntc.name(color)[1]);
+
+            // CSS Variables
+            document.getElementById('css-vars').textContent = `:root {
+    ${colors.map((color, index) => `--color-${colorNames[index].toLowerCase().replaceAll(' ', '-')}: ${color}; /* ${colorNames[index]} */`).join('\n    ')}
+}`;
+
+            // JavaScript Array
+            document.getElementById('js-array').textContent = `const colors = {
+    ${colors.map((color, index) => `'${colorNames[index].replaceAll(' ', '-')}': '${color}'`).join(',\n')}
+};`;
+
+            // Python List
+            document.getElementById('python-list').textContent = `colors = {
+    ${colors.map((color, index) => `'${colorNames[index]}': '${color}'`).join(',\n    ')}
+}`;
+        }
+
+        document.getElementById("generate").addEventListener("click", generatePalette);
+        document.getElementById("colorCount").addEventListener("change", generatePalette);
+
+        // Add copy functionality to code example buttons
+        document.querySelectorAll('.copy-button').forEach(button => {
+            button.addEventListener('click', function () {
+                const targetId = this.getAttribute('data-target');
+                const textToCopy = document.getElementById(targetId).textContent;
+                navigator.clipboard.writeText(textToCopy);
+
+                const originalText = this.textContent;
+                this.textContent = 'Copied!';
+                setTimeout(() => {
+                    this.textContent = originalText;
+                }, 2000);
+            });
+        });
+
+        generatePalette();
+    </script>
+</body>
+
+</html>
