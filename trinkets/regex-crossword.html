@@ -127,6 +127,9 @@
 </head>
 
 <body>
+    <div id="score-display"
+        style="display:none;position: absolute; top: 10px; left: 50%; transform: translateX(-50%); font-size: 24px; color: white; z-index: 1001;">
+        Score: 0</div>
     <script type="module">
         import * as THREE from "three";
         import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -140,6 +143,7 @@
         let HOVER = null;
         const raycaster = new THREE.Raycaster();
         const mouse = new THREE.Vector2();
+        let score, par;
 
         // Game settings
         const settings = {
@@ -721,12 +725,33 @@
         }
 
         function startGame() {
+            document.getElementById('score-display').style.display = 'block'
             scene.clear();
             loadPuzzle();
             createSettingsUI();
             centerCameraOnPuzzle();
             fadeInGame();
+
+            // Add this code to trigger the keyboard on mobile devices
+            const hiddenInput = document.createElement('input');
+            hiddenInput.style.position = 'absolute';
+            hiddenInput.style.opacity = '0';
+            hiddenInput.style.height = '0';
+            hiddenInput.style.fontSize = '16px'; // Prevents zoom on iOS
+            document.body.appendChild(hiddenInput);
+            hiddenInput.focus();
+
+            // Add event listener for input changes
+            hiddenInput.addEventListener('input', onMobileInput);
         }
+
+        function onMobileInput(event) {
+            const char = event.target.value.slice(-1).toUpperCase();
+            event.target.value = ''; // Clear the input for the next key press
+            handleInput(char);
+        }
+
+
         function centerCameraOnPuzzle() {
             const puzzle = puzzles[settings.difficulty];
             const width = puzzle.words[0].length;
@@ -1000,18 +1025,32 @@
         }
 
 
-        function onKeyDown(event) {
-            if (!SELECTION || SELECTION.locked) return; // Add check for locked status
+        function updateScore(points) {
+            score += points;
+            document.getElementById('score-display').textContent = `Score: ${score}`;
+            updateScoreDisplay()
+        }
 
-            const char = String.fromCharCode(event.which);
-            if (/[a-zA-Z]/.test(char) || event.key === "Backspace") {
-                if (event.key === "Backspace") {
+        function onKeyDown(event) {
+            if (!SELECTION || SELECTION.locked) return;
+
+            if (event.key) {
+                handleInput(event.key.toUpperCase());
+            }
+        }
+
+        function handleInput(char) {
+            if (!SELECTION || SELECTION.locked) return;
+
+            if (/[A-Z]/.test(char) || char === "BACKSPACE") {
+                if (char === "BACKSPACE") {
                     SELECTION.input = "";
                 } else {
-                    SELECTION.input = char.toUpperCase();
+                    SELECTION.input = char;
                 }
                 updateDisplay();
-                if (!SELECTION.locked) showHint(SELECTION)
+                if (!SELECTION.locked) showHint(SELECTION);
+                updateScore(-1);
             }
         }
 
@@ -1046,8 +1085,19 @@
                     cubes.push(cube);
                 });
             });
+            // Set par value
+            par = cubes.length + 1;
+            score = par
+
 
             updateDisplay();
+            updateScore(Number(score))
+            updateScoreDisplay();
+        }
+        function updateScoreDisplay() {
+            const scoreDiff = par - score;
+            const scoreText = scoreDiff > 0 ? `+${scoreDiff}` : scoreDiff;
+            document.getElementById('score-display').textContent = `Score: ${scoreText} (Par: ${par})`;
         }
 
         function showHint(cube) {
@@ -1080,33 +1130,43 @@
 
         function checkSolution() {
             let allCorrect = true;
+            let correctCount = 0;
             cubes.forEach((cube) => {
                 const isCorrect = cube.input === cube.letter;
                 allCorrect = allCorrect && isCorrect;
+                if (isCorrect && !cube.locked) {
+                    correctCount++;
+                }
                 animateCube(cube, isCorrect, cube.isMatching);
             });
 
-            if (allCorrect) {
+            // Add points for correct answers
+            updateScore(correctCount * 5);
+
+            if (cubes.every(c => c.locked)) {
                 celebrateWin();
             }
         }
 
         function celebrateWin() {
+            const scoreDiff = (par - score) - 4;
+            const particleCount = Math.max(20, 2000 - scoreDiff * 100); // Scale confetti based on score
+
             confetti({
-                particleCount: 100,
+                particleCount: particleCount,
                 spread: 70,
                 origin: { y: 1 }
             });
 
             setTimeout(() => {
                 confetti({
-                    particleCount: 50,
+                    particleCount: particleCount / 2,
                     angle: 60,
                     spread: 55,
                     origin: { x: 0 }
                 });
                 confetti({
-                    particleCount: 50,
+                    particleCount: particleCount / 2,
                     angle: 120,
                     spread: 55,
                     origin: { x: 1 }
@@ -1114,7 +1174,7 @@
             }, 250);
 
             setTimeout(() => {
-                alert("Congratulations! You've solved the puzzle!");
+                alert(`Congratulations! You've solved the puzzle!\nFinal Score: ${score}`);
                 window.location.reload()
             }, 1000);
         }
