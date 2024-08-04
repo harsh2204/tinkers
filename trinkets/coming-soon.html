@@ -78,13 +78,13 @@
             cursor: pointer;
             transition: background-color 0.3s ease, color 0.3s ease;
             z-index: 10;
+            color: #fff;
         }
 
         .theme-toggle {
             top: 20px;
             right: 20px;
             background-color: var(--text-color);
-            color: var(--bg-color);
             border: none;
         }
 
@@ -92,7 +92,6 @@
             bottom: 20px;
             left: 20px;
             background-color: var(--quirky-color);
-            color: var(--container-bg);
             text-decoration: none;
         }
 
@@ -177,6 +176,14 @@
         .digit-next {
             bottom: 0;
             line-height: 0;
+        }
+
+        body.dark-theme button {
+            background-color: #c0392b;
+        }
+
+        body.dark-theme button:hover {
+            background-color: #e74c3c;
         }
     </style>
 </head>
