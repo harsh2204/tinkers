@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coming Soon - My Browser Trinkets</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.11.4/gsap.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap');
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: #e6eaee;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            line-height: 1.6;
+            overflow: hidden;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 40px;
+            background-color: #fff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            text-align: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            color: #1a2a3a;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 1.2em;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+
+        .quirky-text {
+            font-weight: 600;
+            color: #3498db;
+            font-size: 1.4em;
+        }
+
+        .theme-toggle {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background-color: #2c3e50;
+            color: #fff;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            z-index: 10;
+        }
+
+        .theme-toggle:hover {
+            background-color: #34495e;
+        }
+
+        body.dark-theme {
+            background-color: #1a2a3a;
+            color: #f0f4f8;
+        }
+
+        body.dark-theme .container {
+            background-color: #2c3e50;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        body.dark-theme h1, body.dark-theme p {
+            color: #f0f4f8;
+        }
+
+        body.dark-theme .quirky-text {
+            color: #e74c3c;
+        }
+
+        body.dark-theme .theme-toggle {
+            background-color: #f0f4f8;
+            color: #2c3e50;
+        }
+
+        body.dark-theme .theme-toggle:hover {
+            background-color: #e6eaee;
+        }
+
+        .floating-item {
+            position: absolute;
+            font-size: 2em;
+            opacity: 0.7;
+            user-select: none;
+            pointer-events: none;
+        }
+
+        #home-link {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+            z-index: 10;
+        }
+
+        #home-link:hover {
+            background-color: #2980b9;
+        }
+
+        body.dark-theme #home-link {
+            background-color: #e74c3c;
+        }
+
+        body.dark-theme #home-link:hover {
+            background-color: #c0392b;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Coming Soon</h1>
+        <p>We're cooking up something <span class="quirky-text">extraordinary</span> in our digital kitchen!</p>
+        <p>Our next browser trinket will be a <span class="quirky-text">mind-bending</span> adventure.</p>
+        <p>Stay tuned and keep your neurons <span class="quirky-text">warmed up</span>!</p>
+    </div>
+    <button class="theme-toggle">Dark Theme</button>
+    <a href="/" id="home-link">Back to Home</a>
+
+    <script>
+        // Create floating items
+        const floatingItems = ['🧠', '💡', '🔍', '🎨', '🚀', '💻', '🔧', '🧩'];
+        floatingItems.forEach(item => {
+            const el = document.createElement('div');
+            el.textContent = item;
+            el.classList.add('floating-item');
+            el.style.left = `${Math.random() * 100}vw`;
+            el.style.top = `${Math.random() * 100}vh`;
+            document.body.appendChild(el);
+        });
+
+        // Animate floating items
+        gsap.to('.floating-item', {
+            y: 'random(-100, 100)',
+            x: 'random(-100, 100)',
+            rotation: 'random(-45, 45)',
+            duration: 'random(5, 10)',
+            repeat: -1,
+            yoyo: true,
+            ease: 'sine.inOut',
+            stagger: {
+                each: 0.2,
+                from: 'random'
+            }
+        });
+
+        // Theme toggle functionality
+        const themeToggle = document.querySelector('.theme-toggle');
+        const body = document.body;
+
+        themeToggle.addEventListener('click', () => {
+            body.classList.toggle('dark-theme');
+            themeToggle.textContent = body.classList.contains('dark-theme') ? 'Light Theme' : 'Dark Theme';
+        });
+
+        // Quirky text animation
+        gsap.to('.quirky-text', {
+            scale: 1.1,
+            duration: 0.5,
+            repeat: -1,
+            yoyo: true,
+            stagger: 0.2
+        });
+    </script>
+</body>
+</html>
