@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spin-The-Wheel Choice Picker</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.0/p5.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #2c3e50;
+            font-family: "Arial", sans-serif;
+            color: #ecf0f1;
+        }
+
+        .container {
+            text-align: center;
+        }
+
+        h1 {
+            color: #3498db;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        input,
+        button {
+            margin: 0.5rem;
+            padding: 0.5rem;
+            font-size: 1rem;
+            border-radius: 5px;
+            border: none;
+        }
+
+        input {
+            background-color: #34495e;
+            color: #ecf0f1;
+        }
+
+        button {
+            background-color: #e74c3c;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.1s;
+        }
+
+        button:hover {
+            background-color: #c0392b;
+        }
+
+        button:active {
+            transform: scale(0.98);
+        }
+
+        #result {
+            margin-top: 1rem;
+            font-weight: bold;
+            font-size: 1.2rem;
+            color: #f1c40f;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        #canvas-container {
+            margin-top: 1rem;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            border-radius: 50%;
+            overflow: hidden;
+        }
+
+        #new-game {
+            background-color: #2ecc71;
+        }
+
+        #new-game:hover {
+            background-color: #27ae60;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Spin-to-Win Wheel</h1>
+        <input type="text" id="choiceInput" placeholder="Enter a choice" />
+        <button onclick="addChoice()">Add Choice</button>
+        <button onclick="spinWheel()">Spin the Wheel</button>
+        <button id="new-game" onclick="newGame()">New Game</button>
+        <div id="canvas-container"></div>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        let choices = ["Choice 1", "Choice 2", "Choice 3"];
+        let wheel;
+        let angleV = 0;
+        let spinning = false;
+        let result;
+
+        function setup() {
+            const canvas = createCanvas(400, 400);
+            canvas.parent("canvas-container");
+            wheel = new Wheel();
+            result = select("#result");
+            textAlign(CENTER, CENTER);
+            updateWheel();
+        }
+
+        function draw() {
+            background(44, 62, 80);
+            translate(width / 2, height / 2);
+            wheel.update();
+            wheel.display();
+        }
+
+        class Wheel {
+            constructor() {
+                this.angle = 0;
+                this.colors = [];
+            }
+
+            update() {
+                if (spinning) {
+                    this.angle += angleV;
+                    angleV *= 0.99;
+                    if (angleV < 0.01) {
+                        angleV = 0;
+                        spinning = false;
+                        this.showResult();
+                    }
+                }
+            }
+
+            display() {
+                push();
+                rotate(this.angle);
+                noStroke();
+                for (let i = 0; i < choices.length; i++) {
+                    fill(this.colors[i]);
+                    arc(0, 0, 380, 380, (i * TWO_PI) / choices.length, ((i + 1) * TWO_PI) / choices.length);
+                    push();
+                    rotate((TWO_PI / choices.length) * (i + 0.5));
+                    fill(this.getContrastColor(this.colors[i]));
+                    textSize(16);
+                    text(choices[i], 140, 0);
+                    pop();
+                }
+                pop();
+
+                // Draw arrow
+                fill(236, 240, 241);
+                triangle(-15, -190, 15, -190, 0, -170);
+            }
+
+            showResult() {
+                let normalizedAngle = ((this.angle % TWO_PI) + TWO_PI) % TWO_PI;
+                let sliceAngle = TWO_PI / choices.length;
+
+                // Align the angle so that the first slice is at the top (0 radians)
+                let alignedAngle = (TWO_PI - normalizedAngle) % TWO_PI;
+
+                // Find the index of the slice where the arrow is pointing
+                let winningIndex = floor(alignedAngle / sliceAngle);
+
+                // Ensure the index is within bounds
+                winningIndex = (winningIndex + choices.length) % choices.length;
+
+                result.html(`
+            <p>The winner is: <strong>${choices[winningIndex]}</strong>!</p>
+            <p>Debug Info:</p>
+            <ul>
+                <li>Normalized Wheel Angle: ${normalizedAngle.toFixed(4)}</li>
+                <li>Aligned Angle: ${alignedAngle.toFixed(4)}</li>
+                <li>Slice Angle: ${sliceAngle.toFixed(4)}</li>
+                <li>Winning Index: ${winningIndex}</li>
+            </ul>
+        `);
+
+                this.highlightWinningSlice(winningIndex);
+            }
+
+            highlightWinningSlice(winningIndex) {
+                push();
+                rotate(this.angle);
+                stroke(255, 255, 0);
+                strokeWeight(4);
+                noFill();
+                arc(0, 0, 390, 390, (winningIndex * TWO_PI) / choices.length, ((winningIndex + 1) * TWO_PI) / choices.length);
+                pop();
+            }
+            getContrastColor(bgColor) {
+                let r = red(bgColor);
+                let g = green(bgColor);
+                let b = blue(bgColor);
+                let yiq = (r * 299 + g * 587 + b * 114) / 1000;
+                return yiq >= 128 ? color(0) : color(255);
+            }
+        }
+
+        function addChoice() {
+            const input = select("#choiceInput");
+            if (input.value().trim() !== "") {
+                choices.push(input.value().trim());
+                input.value("");
+                updateWheel();
+            }
+        }
+
+        function updateWheel() {
+            wheel.colors = [];
+            for (let i = 0; i < choices.length; i++) {
+                wheel.colors.push(
+                    color(random(100, 255), random(100, 255), random(100, 255))
+                );
+            }
+        }
+
+        function spinWheel() {
+            if (choices.length < 2) {
+                result.html("Add at least two choices!");
+                return;
+            }
+            if (!spinning) {
+                spinning = true;
+                angleV = random(0.35, 0.55);
+                result.html("");
+            }
+        }
+
+        function newGame() {
+            choices = ["Choice 1", "Choice 2", "Choice 3"];
+            updateWheel();
+            result.html("");
+            wheel.angle = 0;
+            spinning = false;
+            angleV = 0;
+        }
+    </script>
+</body>
+
+</html>
